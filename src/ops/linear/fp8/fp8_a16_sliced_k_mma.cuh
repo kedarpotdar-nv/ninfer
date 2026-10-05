@@ -13,6 +13,7 @@
 #include "ops/linear/common/epilogue.cuh"
 #include "ops/linear/fp8/fp8_operands.h"
 #include "ops/linear/fp8/fp8_shared.cuh"
+#include "core/pdl.cuh"
 
 #include <cuda_bf16.h>
 
@@ -114,10 +115,18 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void fp8_a16_sl
     const int warp_k0                 = warp * kTileK;
     float accumulators[kTokenMmas][4] = {};
 
+    // Programmatic dependent launch: weight codes are producer-independent, so they stream before
+    // the grid-dependency join; activations (the producer's output) follow it. Both PDL calls are
+    // no-ops when the kernel is launched with ordinary stream serialization.
+    if (tid == 0) { pdl::trigger_dependents(); }
+#pragma unroll
+    for (int stage = 0; stage < Schedule::kStages; ++stage) {
+        if (stage < kGroups) { stage_codes(stage, stage * kBlockK); }
+    }
+    pdl::wait_for_dependencies();
 #pragma unroll
     for (int stage = 0; stage < Schedule::kStages; ++stage) {
         if (stage < kGroups) {
-            stage_codes(stage, stage * kBlockK);
             stage_activation(stage, stage * kBlockK);
             cp_commit();
         }
@@ -230,7 +239,11 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void fp8_a16_sl
             const int token0      = token_begin + local_token;
             const int row_a       = row_policy.weight_row(row0, gid, operands.rows);
             const int row_b       = row_policy.weight_row(row0, gid + 8, operands.rows);
-            if constexpr (RowPolicy::kPaired) {
+            if constexpr (requires { destination.store_fragment(row_a, row_b, token0, sum); }) {
+                destination.store_fragment(row_a, row_b, token0,
+                                           make_float4(sum.x * top_scale, sum.y * top_scale,
+                                                       sum.z * bottom_scale, sum.w * bottom_scale));
+            } else if constexpr (RowPolicy::kPaired) {
                 if (local_token < live_columns)
                     epilogue.apply_pair(destination, row_a, token0, sum.x * top_scale,
                                         sum.z * bottom_scale);

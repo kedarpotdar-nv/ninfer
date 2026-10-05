@@ -43,7 +43,7 @@ void require_policy(LinearPolicy policy, const char* operation) {
 }
 
 Fp8GdnConvPlan b1_a16_plan(std::int32_t width) {
-    const bool fused = width <= 3;
+    const bool fused = width <= 3 || width == 8;
     return {fused ? Fp8GdnConvScheduleId::FusedA16 : Fp8GdnConvScheduleId::MaterializedA16};
 }
 
@@ -115,7 +115,8 @@ std::size_t fp8_gdn_snapshot_workspace_capacity_bytes(LinearPolicy policy, std::
     }
     (void)fp8_gdn_snapshot_resolve_plan(policy, min_width, batch_size);
     const Fp8GdnConvPlan maximum = fp8_gdn_snapshot_resolve_plan(policy, max_width, batch_size);
-    const std::int32_t largest_materialized_width = batch_size > 1 || max_width > 3 ? max_width : 0;
+    std::int32_t largest_materialized_width = batch_size > 1 || max_width > 3 ? max_width : 0;
+    if (batch_size == 1 && max_width == 8) largest_materialized_width = min_width < 8 ? 7 : 0;
     return snapshot_capacity(maximum, batch_size * largest_materialized_width,
                              batch_size * max_width);
 }

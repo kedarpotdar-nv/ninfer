@@ -696,4 +696,82 @@ __global__ void __launch_bounds__(kWarpSize* kNumWarps, 2)
     access.publish_final_conv_history(coord, valid);
 }
 
+// Eight-token Record has no state publication. Stage its independent inputs before
+// the serial recurrence, sharing normalization across the four value-row warps.
+// Raw replay records retain their represented bits and only valid columns are read.
+template <bool Masked>
+__global__ void __launch_bounds__(kWarpSize* kNumWarps, 2)
+    recurrent_record_prefetch8_kernel(RecordAccess<Masked> access) {
+    __shared__ __align__(16) float queries[8][kStateDim];
+    __shared__ __align__(16) float keys[8][kStateDim];
+    __shared__ float values[8][kBlockDv];
+    __shared__ float2 gates[8];
+    const RecurrentCoordinates coord = access.coordinates();
+    const int valid                  = access.active_columns(coord);
+    const int block_dv               = coord.state_tile * kBlockDv;
+
+    for (int token = coord.warp; token < valid; token += kNumWarps) {
+        RawQkLane key   = load_raw_qk_lane(access.key_ptr(coord, token), coord.dqk_base);
+        RawQkLane query = load_raw_qk_lane(access.query_ptr(coord, token), coord.dqk_base);
+        // Each producer warp owns a distinct token, so no warp-zero restriction
+        // is needed here. Head and state-tile ownership still select one writer.
+        if (coord.state_tile == 0 &&
+            static_cast<int>(coord.value_head) % access.heads.group_size() == 0) {
+            auto* destination =
+                access.key_record +
+                (access.column(coord, token) * access.heads.H_qk + coord.qk_head) * kStateDim;
+            store_vec(destination + coord.dqk_base, key.bits);
+        }
+        normalize_qk_lane<true>(key.value, coord.lane);
+        normalize_qk_lane<true>(query.value, coord.lane);
+        store_qk_lane(key.value, keys[token], coord.dqk_base);
+        store_qk_lane(query.value, queries[token], coord.dqk_base);
+        if (coord.lane < kBlockDv) {
+            const auto raw            = access.value_ptr(coord, token)[block_dv + coord.lane];
+            values[token][coord.lane] = __bfloat162float(raw);
+            auto* destination =
+                access.value_record +
+                (access.column(coord, token) * access.heads.H_v + coord.value_head) * kStateDim;
+            destination[block_dv + coord.lane] = raw;
+        }
+        if (coord.lane == 0) {
+            const RawGatePair gate = access.load_gate(coord, token);
+            gates[token]           = make_float2(gate.g, gate.beta);
+            if (coord.state_tile == 0) {
+                access.gate_record[access.column(coord, token) * access.heads.H_v +
+                                   coord.value_head] = gate.bits;
+            }
+        }
+    }
+    __align__(16) float state[kDvPerWarp][kQkPerLane];
+    load_state_tile(state, access.state_read_base(coord), coord);
+    __syncthreads();
+
+    for (int token = 0; token < valid; ++token) {
+        __align__(16) float key[kQkPerLane];
+        __align__(16) float query[kQkPerLane];
+        load_qk_lane(key, keys[token], coord.dqk_base);
+        load_qk_lane(query, queries[token], coord.dqk_base);
+        const float value =
+            coord.lane < kDvPerWarp ? values[token][coord.warp * kDvPerWarp + coord.lane] : 0.0f;
+        const float2 gate = gates[token];
+        apply_gdn_transition(state, key, value, gate.x, gate.y);
+
+        float attn_val = 0.0f;
+#pragma unroll
+        for (int r = 0; r < kDvPerWarp; ++r) {
+            float partial = 0.0f;
+#pragma unroll
+            for (int c = 0; c < kQkPerLane; ++c) { partial += state[r][c] * query[c]; }
+            partial = warp_sum<kWarpSize>(partial);
+            if (coord.lane == r) { attn_val = partial; }
+        }
+        if (coord.lane < kDvPerWarp) {
+            access.output_ptr(coord, token)[coord.dv_base + coord.lane] =
+                __float2bfloat16(attn_val * access.scale);
+        }
+    }
+    zero_output_suffix(access, coord, valid, 8);
+}
+
 } // namespace ninfer::ops::detail::gated_delta_net

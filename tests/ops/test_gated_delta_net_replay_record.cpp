@@ -4,6 +4,7 @@
 #include "ops/linear_attention/gated_delta_net/launch.h"
 
 #include "ops/op_tester.h"
+#include "ops/gdn_ref.h"
 
 #include <algorithm>
 #include <bit>
@@ -165,7 +166,7 @@ int run_case(std::int32_t value_heads, std::int32_t width, std::int32_t batch,
     launch_reference();
     launch_record();
     CUDA_CHECK(cudaStreamSynchronize(stream));
-    if (width == 2 || width == 9 || width == 16) {
+    if (width == 2 || width == 8 || width == 9 || width == 16) {
         cudaGraph_t graph;
         cudaGraphExec_t executable;
         CUDA_CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
@@ -202,6 +203,50 @@ int run_case(std::int32_t value_heads, std::int32_t width, std::int32_t batch,
         from_device<std::uint16_t>(record_out, value_elements);
     failures +=
         verify_equal("replay record output" + suffix, reference_output_bits, record_output_bits);
+
+    // Qualify the staged Record route directly against the mathematical recurrence,
+    // using the unchanged per-head recurrent output criteria in test_gated_delta_net.
+    if (width == 8 && batch == 1 && value_heads == 48) {
+        const int active = valid_columns[0];
+        gdn_ref::Inputs in;
+        in.head_dim    = kStateDim;
+        in.qk_heads    = kQkHeads;
+        in.value_heads = value_heads;
+        in.tokens      = active;
+        for (int i = 0; i < kStateDim * kQkHeads * active; ++i) {
+            in.q.push_back(bf16_to_f32(q_bits[i]));
+            in.k.push_back(bf16_to_f32(k_bits[i]));
+        }
+        for (int i = 0; i < kStateDim * value_heads * active; ++i) {
+            in.v.push_back(bf16_to_f32(v_bits[i]));
+        }
+        in.g.assign(g.begin(), g.begin() + value_heads * active);
+        in.beta.assign(beta.begin(), beta.begin() + value_heads * active);
+        const auto state_size  = static_cast<std::size_t>(kStateDim) * kStateDim * value_heads;
+        const auto state_begin = state.begin() + initial_slots[0] * state_size;
+        in.state.assign(state_begin, state_begin + state_size);
+        const auto oracle = gdn_ref::evaluate(in, kScale, true);
+        constexpr ReductionCriterion criterion{4.1e-3, 5.0e-6, 5.5e-3};
+        double worst_relative_l2 = 0.0;
+        for (int head = 0; head < value_heads; ++head) {
+            std::vector<double> got, expected;
+            for (int token = 0; token < active; ++token) {
+                const auto base = (token * value_heads + head) * kStateDim;
+                for (int d = 0; d < kStateDim; ++d) {
+                    got.push_back(bf16_to_f32(record_output_bits[base + d]));
+                    expected.push_back(oracle.out[base + d]);
+                }
+            }
+            const auto stats  = compute_reduction_stats(got.data(), expected.data(), got.size());
+            worst_relative_l2 = std::max(worst_relative_l2, stats.relative_l2);
+            if (!reduction_passes(stats, got.size(), criterion)) {
+                std::cerr << "Record FP64 oracle failed head=" << head << suffix << '\n';
+                ++failures;
+            }
+        }
+        std::cout << "Record FP64 oracle valid=" << active
+                  << " max_head_rel_l2=" << worst_relative_l2 << '\n';
+    }
 
     const std::vector<std::uint16_t> key_bits_after =
         from_device<std::uint16_t>(key_record, qk_elements);
@@ -295,6 +340,9 @@ int main() {
         failures += run_case(48, width, 8, valid, 1760U + width);
     }
     failures += run_case(48, 5, 3, {5, 3, 1}, 1791U);
+    for (int valid = 1; valid <= 8; ++valid) {
+        failures += run_case(48, 8, 1, {valid}, 1800U + valid);
+    }
     std::cout << (failures == 0 ? "OK" : "FAIL") << " gated_delta_net_replay_record\n";
     return failures == 0 ? 0 : 1;
 }

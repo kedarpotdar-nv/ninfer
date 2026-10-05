@@ -1093,6 +1093,9 @@ int run_fp8() {
     failures += run_fp8_case(parent, 4, ops::LinearPolicy::A16Only, 5);
     failures += run_fp8_case(parent, 6, ops::LinearPolicy::A16Only, 7);
     failures += run_fp8_case(parent, 7, ops::LinearPolicy::A16Only, 8);
+    failures += run_fp8_case(parent, 8, ops::LinearPolicy::A16Only, 9);
+    failures += run_fp8_case(parent, 8, ops::LinearPolicy::AllowA8, 9);
+    failures += run_fp8_case(parent, 8, ops::LinearPolicy::A16Only, 3, false, true);
     failures += run_fp8_case(parent, 9, ops::LinearPolicy::AllowA8, 10);
     failures += run_fp8_case(parent, 10, ops::LinearPolicy::AllowA8, 11);
     failures += run_fp8_case(parent, 10, ops::LinearPolicy::A16Only, 11);
@@ -1136,6 +1139,7 @@ int run_fp8() {
             });
     };
     failures += run_batched(4, 2, {4, 2}, 937U);
+    for (int valid = 1; valid <= 8; ++valid) failures += run_batched(8, 1, {valid}, 950U + valid);
     failures += run_batched(16, 8, {16, 13, 11, 7, 5, 3, 2, 1}, 941U);
     failures += parent.verify_preserved("batched FP8 parent weight");
     return failures;

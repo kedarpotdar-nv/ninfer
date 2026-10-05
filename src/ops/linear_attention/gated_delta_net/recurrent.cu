@@ -97,7 +97,11 @@ void launch_recurrent_record_fixed(const Tensor& q, const Tensor& k, const Tenso
         state_slot_stride,
         scale,
     };
-    recurrent_record_kernel<Masked><<<grid, block, 0, stream>>>(access);
+    if (q.ne[2] == 8 && q.ne[3] == 1 && v.ne[1] == 48) {
+        recurrent_record_prefetch8_kernel<Masked><<<grid, block, 0, stream>>>(access);
+    } else {
+        recurrent_record_kernel<Masked><<<grid, block, 0, stream>>>(access);
+    }
     CUDA_CHECK(cudaGetLastError());
 }
 
