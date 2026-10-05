@@ -4,6 +4,7 @@
 #include "ops/common/math.cuh"
 #include "ops/common/memory.cuh"
 #include "ops/common/warp.cuh"
+#include "core/pdl.cuh"
 
 #include <cuda_bf16.h>
 
@@ -17,6 +18,7 @@ __global__ __launch_bounds__(Threads) void gdn_norm_gating_27_simt(
     const __nv_bfloat16* bw, const float* alog, const float* bias, __nv_bfloat16* h, float* g,
     float* beta, int tokens, float eps) {
     constexpr int D = 5120, H = 48, Warps = Threads / 32;
+    if (threadIdx.x == 0) { pdl::trigger_dependents(); }
     const int tid = threadIdx.x, lane = tid & 31, warp = tid >> 5, head = blockIdx.x,
               first = blockIdx.y * Tile;
     float aa[Tile]{}, bb[Tile]{}, ss[Tile]{};

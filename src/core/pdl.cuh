@@ -5,7 +5,20 @@
 #include <cstddef>
 #include <utility>
 
+#include <cstdlib>
+#include <cstring>
+
 namespace ninfer::pdl {
+
+// Experiment switch: NINFER_PDL=0 launches every PDL-capable kernel with ordinary stream
+// serialization. Device-side trigger/wait calls are no-ops for kernels launched that way.
+inline bool enabled() {
+    static const bool value = [] {
+        const char* raw = std::getenv("NINFER_PDL");
+        return raw == nullptr || std::strcmp(raw, "0") != 0;
+    }();
+    return value;
+}
 
 struct LaunchConfig {
     dim3 grid;

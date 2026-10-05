@@ -15,6 +15,7 @@
 #include "ops/linear/fp8/fp8_operands.h"
 #include "ops/linear/fp8/fp8_shared.cuh"
 #include "ops/linear/fp8/fp8_a8_mma_common.cuh"
+#include "core/pdl.cuh"
 
 #include <cuda_bf16.h>
 
@@ -58,13 +59,14 @@ __global__ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void
     const int row_begin          = row_tile * rows_per_block;
     const int token_begin        = token_offset + token_tile * BM;
 
-    auto stage_inputs = [&](int stage, int k_tile) {
+    auto stage_inputs = [&](int stage, int k_tile, bool activations, bool weights) {
         const int k_begin      = k_tile * BK;
         auto* activation_stage = activation_shared + stage * BM * BK;
         auto* weight_stage     = weight_shared + stage * BN * BK;
 
 #pragma unroll 1
-        for (int task = tid; task < BM * Schedule::kSegmentsPerRow; task += THREADS) {
+        for (int task = activations ? tid : BM * Schedule::kSegmentsPerRow;
+             task < BM * Schedule::kSegmentsPerRow; task += THREADS) {
             const int row             = task / Schedule::kSegmentsPerRow;
             const int logical_segment = task - row * Schedule::kSegmentsPerRow;
             const int logical_byte    = logical_segment * 16;
@@ -86,7 +88,8 @@ __global__ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void
         }
 
 #pragma unroll 1
-        for (int task = tid; task < BN * Schedule::kSegmentsPerRow; task += THREADS) {
+        for (int task = weights ? tid : BN * Schedule::kSegmentsPerRow;
+             task < BN * Schedule::kSegmentsPerRow; task += THREADS) {
             const int row             = task / Schedule::kSegmentsPerRow;
             const int logical_segment = task - row * Schedule::kSegmentsPerRow;
             const int logical_byte    = logical_segment * 16;
@@ -98,9 +101,14 @@ __global__ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void
         }
     };
 
+    // Programmatic dependent launch: weights first, join, then the producer's activation codes.
+    if (tid == 0) { pdl::trigger_dependents(); }
+#pragma unroll
+    for (int stage = 0; stage < S; ++stage) { stage_inputs(stage, stage, false, true); }
+    pdl::wait_for_dependencies();
 #pragma unroll
     for (int stage = 0; stage < S; ++stage) {
-        stage_inputs(stage, stage);
+        stage_inputs(stage, stage, true, false);
         cp_commit();
     }
 
@@ -121,7 +129,7 @@ __global__ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void
         __syncthreads();
         const int next_k_tile = k_tile + S;
         if (next_k_tile < TILES_K) {
-            stage_inputs(stage, next_k_tile);
+            stage_inputs(stage, next_k_tile, true, true);
             cp_commit();
         }
     }

@@ -14,6 +14,7 @@
 #include "ops/linear/q8/q8_operands.h"
 #include "ops/linear/q8/q8_shared.cuh"
 #include "ops/linear/common/epilogue.cuh"
+#include "core/pdl.cuh"
 
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
@@ -223,7 +224,9 @@ __device__ __forceinline__ void q8_a16_sliced_k_mma(Q8LinearOperands operands, O
         acc[ni][3] = 0.0f;
     }
 
+    if (tid == 0) { pdl::trigger_dependents(); }
     stage_codes(0, 0);
+    pdl::wait_for_dependencies();
     stage_x(0, 0);
     cp_commit();
     cp_wait<0>();

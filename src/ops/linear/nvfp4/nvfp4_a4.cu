@@ -4,6 +4,7 @@
 #include "core/device.h"
 #include "ops/linear/nvfp4/nvfp4_a4_quantize.cuh"
 #include "ops/linear/nvfp4/nvfp4_a4_tma_launch.h"
+#include "core/pdl.cuh"
 
 #include <cuda_bf16.h>
 
@@ -26,32 +27,35 @@ void launch_quantize_exact(const Tensor& x, const Weight& weight, Nvfp4A4Workspa
         layout != Nvfp4ScaleLayout::RowMajor ? nvfp4_a4_padded_tokens(tokens, layout) : tokens;
     const std::int32_t tasks = written_tokens * ActivationGeometry::kGroupsPerRow;
     const int blocks         = (tasks + kThreads - 1) / kThreads;
+    const auto launch        = [&]<Nvfp4ScaleLayout Layout>() {
+        constexpr auto kernel = nvfp4_a4_quantize_kernel<ActivationGeometry, kThreads, Layout>;
+        if (pdl::enabled()) {
+            CUDA_CHECK(pdl::launch_dependent({dim3(blocks), dim3(kThreads), 0, stream}, kernel,
+                                                    input, workspace.codes, workspace.scales, tokens,
+                                                    written_tokens, weight.input_scale_divisor));
+        } else {
+            kernel<<<blocks, kThreads, 0, stream>>>(input, workspace.codes, workspace.scales,
+                                                           tokens, written_tokens,
+                                                           weight.input_scale_divisor);
+            CUDA_CHECK(cudaGetLastError());
+        }
+    };
     // The tiled plane exists only for a K whose group count divides into whole tiles. Registered
     // Ks all do; gating the instantiation keeps a future K that does not out of a hard compile
     // error and into a runtime message.
     if constexpr (ActivationGeometry::kGroupsPerRow % kNvfp4ScaleTileGroups == 0) {
         if (layout != Nvfp4ScaleLayout::RowMajor) {
             if (layout == Nvfp4ScaleLayout::Tiled128) {
-                nvfp4_a4_quantize_kernel<ActivationGeometry, kThreads, Nvfp4ScaleLayout::Tiled128>
-                    <<<blocks, kThreads, 0, stream>>>(input, workspace.codes, workspace.scales,
-                                                      tokens, written_tokens,
-                                                      weight.input_scale_divisor);
+                launch.template operator()<Nvfp4ScaleLayout::Tiled128>();
             } else {
-                nvfp4_a4_quantize_kernel<ActivationGeometry, kThreads, Nvfp4ScaleLayout::Tiled256>
-                    <<<blocks, kThreads, 0, stream>>>(input, workspace.codes, workspace.scales,
-                                                      tokens, written_tokens,
-                                                      weight.input_scale_divisor);
+                launch.template operator()<Nvfp4ScaleLayout::Tiled256>();
             }
-            CUDA_CHECK(cudaGetLastError());
             return;
         }
     } else if (layout != Nvfp4ScaleLayout::RowMajor) {
         throw std::invalid_argument("nvfp4 A4 tiled scales need K groups in whole tiles");
     }
-    nvfp4_a4_quantize_kernel<ActivationGeometry, kThreads, Nvfp4ScaleLayout::RowMajor>
-        <<<blocks, kThreads, 0, stream>>>(input, workspace.codes, workspace.scales, tokens,
-                                          written_tokens, weight.input_scale_divisor);
-    CUDA_CHECK(cudaGetLastError());
+    launch.template operator()<Nvfp4ScaleLayout::RowMajor>();
 }
 
 } // namespace

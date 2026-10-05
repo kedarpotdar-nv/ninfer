@@ -10,6 +10,8 @@
 #include "ops/linear/fp8/fp8_a8_mma.cuh"
 #include "ops/linear/fp8/fp8_a8_tma_mma.cuh"
 
+#include "core/pdl.cuh"
+
 namespace ninfer::ops::detail {
 template <class Schedule, class Output, class Epilogue, class Rows = Fp8IdentityRows>
 void launch_fp8_a16_gemv(const Fp8A16Operands& p, Output output, Epilogue epilogue,
@@ -80,8 +82,14 @@ void launch_fp8_a16_sliced_k_mma(const Fp8A16Operands& p, Output output, Epilogu
     const int bytes       = fp8_prepare_shared<Schedule::kSharedBytes, kernel>();
     for_each_token_slice(p.tokens, capacity, [&](int offset, int count) {
         const dim3 grid(p.rows / Schedule::kBlockRows, div_up(count, capacity));
-        kernel<<<grid, Schedule::kThreads, bytes, stream>>>(p, output, epilogue, rows, offset);
-        CUDA_CHECK(cudaGetLastError());
+        if (pdl::enabled()) {
+            CUDA_CHECK(pdl::launch_dependent(
+                {grid, dim3(Schedule::kThreads), static_cast<std::size_t>(bytes), stream}, kernel,
+                p, output, epilogue, rows, offset));
+        } else {
+            kernel<<<grid, Schedule::kThreads, bytes, stream>>>(p, output, epilogue, rows, offset);
+            CUDA_CHECK(cudaGetLastError());
+        }
     });
 }
 
@@ -98,9 +106,15 @@ void launch_fp8_a8_mma(const Fp8A8Operands& p, Output output, Epilogue epilogue,
             constexpr auto kernel = fp8_a8_mma_kernel<Schedule, Full, Epilogue, Output, Rows>;
             const int bytes =
                 fp8_prepare_shared<fp8_mma_shared_bytes<Schedule, Epilogue>, kernel>();
-            kernel<<<blocks, Schedule::kThreads, bytes, stream>>>(p, output, epilogue, rows, offset,
-                                                                  count);
-            CUDA_CHECK(cudaGetLastError());
+            if (pdl::enabled()) {
+                CUDA_CHECK(pdl::launch_dependent({dim3(blocks), dim3(Schedule::kThreads),
+                                                  static_cast<std::size_t>(bytes), stream},
+                                                 kernel, p, output, epilogue, rows, offset, count));
+            } else {
+                kernel<<<blocks, Schedule::kThreads, bytes, stream>>>(p, output, epilogue, rows,
+                                                                      offset, count);
+                CUDA_CHECK(cudaGetLastError());
+            }
         };
         if (count % Schedule::kBlockTokens == 0)
             launch.template operator()<true>();

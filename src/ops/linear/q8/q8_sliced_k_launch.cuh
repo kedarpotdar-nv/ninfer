@@ -2,6 +2,7 @@
 #include "ops/common/math.h"
 #include "ops/common/token_slices.h"
 #include "ops/linear/q8/q8_a16_sliced_k_mma.cuh"
+#include "core/pdl.cuh"
 
 namespace ninfer::ops::detail {
 template <class Schedule, class RowPolicy = Q8SlicedKIdentityRows, class Output, class Epilogue>
@@ -29,9 +30,15 @@ void launch_q8_a16_sliced_k_mma(const Q8LinearOperands& operands, Output output,
             constexpr auto kernel =
                 q8_a16_sliced_k_mma_kernel<Schedule, Full, Output, Epilogue, RowPolicy>;
             const int shared = q8_prepare_shared<Schedule::kSharedBytes, kernel>();
-            kernel<<<grid, Schedule::kThreads, shared, stream>>>(operands, output, epilogue,
-                                                                 row_policy, offset);
-            CUDA_CHECK(cudaGetLastError());
+            if (pdl::enabled()) {
+                CUDA_CHECK(pdl::launch_dependent(
+                    {grid, dim3(Schedule::kThreads), static_cast<std::size_t>(shared), stream},
+                    kernel, operands, output, epilogue, row_policy, offset));
+            } else {
+                kernel<<<grid, Schedule::kThreads, shared, stream>>>(operands, output, epilogue,
+                                                                     row_policy, offset);
+                CUDA_CHECK(cudaGetLastError());
+            }
         };
         if (operands.rows % Schedule::kBlockRows == 0 && operands.k == operands.padded_k &&
             operands.k % Schedule::kBlockK == 0)

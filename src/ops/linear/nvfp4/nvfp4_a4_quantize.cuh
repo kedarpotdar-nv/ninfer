@@ -1,6 +1,7 @@
 #pragma once
 #include "ops/linear/nvfp4/nvfp4_codec.cuh"
 #include "ops/linear/nvfp4/nvfp4_layout.h"
+#include "core/pdl.cuh"
 
 namespace ninfer::ops::detail {
 // The TMA route reads a whole [128 or 256 tokens, kNvfp4ScaleTileGroups groups] tile of
@@ -34,9 +35,12 @@ __global__ __launch_bounds__(Threads, 512 / Threads) void nvfp4_a4_quantize_kern
     static_assert(Layout == Nvfp4ScaleLayout::RowMajor ||
                   (Geometry::kInputRows / 16) % kNvfp4ScaleTileGroups == 0);
     constexpr int kGroupsPerRow = Geometry::kInputRows / 16;
+    if (threadIdx.x == 0) { pdl::trigger_dependents(); }
     const int task =
         static_cast<int>(blockIdx.x) * static_cast<int>(blockDim.x) + static_cast<int>(threadIdx.x);
     const int tasks = tokens * kGroupsPerRow;
+    // The input is the producer kernel's output; nothing above touches producer-written memory.
+    pdl::wait_for_dependencies();
     if (task >= tasks) {
         // The tiled plane is addressed in whole tiles, so the launch covers the padding of the last
         // one. A padded token owns no input and no code byte, only the scale the consumer's tile

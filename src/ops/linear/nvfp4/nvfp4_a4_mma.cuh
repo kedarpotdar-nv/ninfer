@@ -8,6 +8,7 @@
 #include "ops/linear/nvfp4/nvfp4_shared.cuh"
 #include "ops/linear/common/epilogue.cuh"
 #include "ops/linear/common/vector_output.cuh"
+#include "core/pdl.cuh"
 
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
@@ -177,13 +178,24 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void nvfp4_a4_m
     const int kKTiles           = k / Schedule::kBlockK;
     constexpr int kWaitGroups   = Schedule::kStages - 1;
 
+    // Programmatic dependent launch: let the next kernel schedule as soon as this grid starts, and
+    // stream the first weight stages (producer-independent) before joining the producer grid. The
+    // weights land in the first commit group together with activation stage 0, so the first
+    // cp_wait below still covers them. Without a dependent launch both calls are no-ops.
+    if (threadIdx.x == 0) { pdl::trigger_dependents(); }
+#pragma unroll
+    for (int stage = 0; stage < Schedule::kStages; ++stage) {
+        if (stage < kKTiles) {
+            stage_nvfp4_a4_weight<Schedule>(weight_codes, weight_scales, shared, stage, stage,
+                                            row_begin, row_policy, rows, k);
+        }
+    }
+    pdl::wait_for_dependencies();
 #pragma unroll
     for (int stage = 0; stage < Schedule::kStages; ++stage) {
         if (stage < kKTiles) {
             stage_nvfp4_a4_activation<Schedule>(x, x_scales, k, shared, stage, stage, token_begin,
                                                 tokens);
-            stage_nvfp4_a4_weight<Schedule>(weight_codes, weight_scales, shared, stage, stage,
-                                            row_begin, row_policy, rows, k);
             cp_commit();
         }
     }

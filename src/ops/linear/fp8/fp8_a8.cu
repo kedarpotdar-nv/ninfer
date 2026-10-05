@@ -1,4 +1,5 @@
 #include "core/weight.h"
+#include "core/pdl.cuh"
 #include "ops/linear/fp8/fp8_a8_plan.h"
 
 #include "core/device.h"
@@ -29,10 +30,12 @@ __global__ __launch_bounds__(Threads,
     __shared__ float warp_maxima[warps];
     __shared__ float token_scale;
 
-    const int token         = static_cast<int>(blockIdx.x);
-    const int tid           = static_cast<int>(threadIdx.x);
-    const int lane          = tid & 31;
-    const int warp          = tid >> 5;
+    const int token = static_cast<int>(blockIdx.x);
+    const int tid   = static_cast<int>(threadIdx.x);
+    const int lane  = tid & 31;
+    const int warp  = tid >> 5;
+    if (tid == 0) { pdl::trigger_dependents(); }
+    pdl::wait_for_dependencies();
     const auto* input_pairs = reinterpret_cast<const std::uint32_t*>(
         input + static_cast<std::int64_t>(token) * ActivationGeometry::kInputRows);
     auto* output_pairs = reinterpret_cast<std::uint16_t*>(
@@ -71,9 +74,16 @@ __global__ __launch_bounds__(Threads,
 template <class ActivationGeometry>
 void launch_quantize_exact(const Tensor& x, Fp8A8Workspace workspace, cudaStream_t stream) {
     constexpr int kThreads = 256;
-    fp8_a8_quantize_kernel<ActivationGeometry, kThreads><<<x.ne[1], kThreads, 0, stream>>>(
-        static_cast<const __nv_bfloat16*>(x.data), workspace.codes, workspace.scales);
-    CUDA_CHECK(cudaGetLastError());
+    constexpr auto kernel  = fp8_a8_quantize_kernel<ActivationGeometry, kThreads>;
+    if (pdl::enabled()) {
+        CUDA_CHECK(pdl::launch_dependent(
+            {dim3(static_cast<unsigned>(x.ne[1])), dim3(kThreads), 0, stream}, kernel,
+            static_cast<const __nv_bfloat16*>(x.data), workspace.codes, workspace.scales));
+    } else {
+        kernel<<<x.ne[1], kThreads, 0, stream>>>(static_cast<const __nv_bfloat16*>(x.data),
+                                                 workspace.codes, workspace.scales);
+        CUDA_CHECK(cudaGetLastError());
+    }
 }
 
 } // namespace
