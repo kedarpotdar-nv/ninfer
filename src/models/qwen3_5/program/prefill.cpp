@@ -380,6 +380,7 @@ runtime::ExecutionTiming ProgramImpl::resolve_pending_raw(
                          device.stream);
         }
 
+        bool context_appended = false;
         if (is_masked_draft_backend(speculative_backend)) {
             std::array<std::uint32_t, kMaximumConcurrency> append_lanes{};
             std::array<std::uint32_t, kMaximumConcurrency> append_starts{};
@@ -398,12 +399,19 @@ runtime::ExecutionTiming ProgramImpl::resolve_pending_raw(
                     std::span<const std::uint32_t>(append_lanes.data(), append_size),
                     std::span<const std::uint32_t>(append_starts.data(), append_size),
                     std::span<const std::uint32_t>(append_counts.data(), append_size));
+                context_appended = true;
             }
         }
 
-        timing.begin_wait();
-        device.synchronize();
-        timing.end_wait();
+        // The fold and the next round are stream-ordered device work. Only the hidden-correction
+        // copy (a host stack array) and the context append (host ingress reuse) read host memory
+        // asynchronously, so the host waits only when one of them was issued. Otherwise the next
+        // round's graph launch overlaps the fold instead of idling the GPU.
+        if (needs_hidden_correction || context_appended) {
+            timing.begin_wait();
+            device.synchronize();
+            timing.end_wait();
+        }
         work.reset();
     } catch (...) {
         try {
