@@ -19,6 +19,11 @@ int main() {
                                  {5120, 6144, 429U, route_starts, interiors, graph_tokens});
         failures += run_shape("Q4_A16 LinearAdd full", WeightFormat::Q4G64F16S,
                               {5120, 6144, 431U, {}, full_tokens, {}, true});
+        // Dense FFN down geometry used by the DFlash2 draft Q4 experiment.
+        failures += run_shape("Q4_A16 LinearAdd K17408", WeightFormat::Q4G64F16S,
+                              {5120, 17408, 433U, route_starts, interiors, graph_tokens});
+        failures += run_shape("Q4_A16 LinearAdd K17408 full", WeightFormat::Q4G64F16S,
+                              {5120, 17408, 435U, {}, full_tokens, {}, true});
         std::cout << (failures == 0 ? "OK" : "FAIL") << " Q4_A16 LinearAdd\n";
         return failures == 0 ? 0 : 1;
     } catch (const std::exception& error) {

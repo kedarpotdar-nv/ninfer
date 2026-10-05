@@ -20,10 +20,10 @@ using MmaR32T64  = Q4A16MmaSchedule<32, 64, 64, 16, 32, 3, 2, Q4MmaFragmentPipel
 using MmaR64T128 = Q4A16MmaSchedule<64, 128, 64, 64, 32, 2, 1, Q4MmaFragmentPipeline::Serial,
                                     Cache::cg, Cache::cg, Q4ScaleLoad::Pair32>;
 
-template <int Capacity>
+template <int Capacity, int StaticK = 6144>
 void launch_sliced(const Tensor& x, const Weight& w, Tensor& residual, cudaStream_t stream) {
     using Schedule = Q4A16SlicedKMmaSchedule<16, (Capacity + 7) / 8 * 8, 8, 1, Cache::cg, Cache::ca,
-                                             6, 6144, Capacity>;
+                                             6, StaticK, Capacity>;
     auto* data     = static_cast<__nv_bfloat16*>(residual.data);
     const auto stride = static_cast<std::int64_t>(residual.nb[1] / sizeof(__nv_bfloat16));
     launch_q4_a16_sliced_k_mma<Schedule>(q4_linear_operands(x, w),
@@ -49,8 +49,21 @@ void launch_mma(const Tensor& x, const Weight& w, Tensor& out, cudaStream_t stre
 } // namespace
 
 Q4LinearAddLaunch select_q4_linear_add(std::int32_t rows, std::int32_t k, std::int32_t tokens) {
-    if (rows != 5120 || k != 6144 || tokens <= 0) {
+    if (rows != 5120 || (k != 6144 && k != 17408) || tokens <= 0) {
         throw std::invalid_argument("q4 linear_add: unsupported shape or token extent");
+    }
+    if (k == 17408) {
+        // Dense FFN down projection with Q4 weights (DFlash2 draft experiment). The sliced-K
+        // schedules are K-static, so they carry their own instances; the MMA schedules tile a
+        // runtime K. The 6144-row GEMV is K-static as well, so T=1 uses the narrow sliced tile.
+        if (tokens <= 4) return launch_sliced<4, 17408>;
+        if (tokens <= 8) return launch_sliced<8, 17408>;
+        if (tokens <= 16) return launch_sliced<16, 17408>;
+        if (tokens <= 24) return launch_sliced<24, 17408>;
+        if (tokens <= 32) return launch_sliced<32, 17408>;
+        if (tokens <= 96) return launch_mma<MmaR32T32>;
+        if (tokens <= 192) return launch_mma<MmaR32T64>;
+        return launch_mma<MmaR64T128>;
     }
     if (tokens == 1) return launch_gemv<GemvR1W8>;
     if (tokens <= 4) return launch_sliced<4>;

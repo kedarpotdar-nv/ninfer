@@ -6,6 +6,10 @@
 #include "ops/linear/q8/q8_launch.h"
 #include "ops/linear/common/output.cuh"
 #include "ops/linear/q8/q8_sliced_k_launch.cuh"
+#include "ops/linear/q4/q4_schedule.cuh"
+#include "ops/linear/q4/q4_operands.h"
+#include "ops/linear/q4/q4_sliced_k_launch.cuh"
+#include "ops/linear/q4/q4_mma_launch.cuh"
 #include <cuda_bf16.h>
 #include <array>
 #include <algorithm>
@@ -61,6 +65,44 @@ constexpr auto make_launchers(std::index_sequence<I...>) {
 constexpr auto attention = make_launchers<4096>(std::make_index_sequence<11>{});
 constexpr auto mlp       = make_launchers<17408>(std::make_index_sequence<11>{});
 
+// Q4 projection into the same materialized BF16 plane (draft Q4 experiment). The sliced-K
+// schedules are K-static; the MMA schedules tile a runtime K for wide column counts.
+template <int Capacity, int StaticK>
+void q4_sliced(const Tensor& x, const Weight& weight, Tensor& out, cudaStream_t stream) {
+    using Schedule = Q4A16SlicedKMmaSchedule<16, (Capacity + 7) / 8 * 8, 8, 1, Cache::cg, Cache::ca,
+                                             6, StaticK, Capacity>;
+    launch_q4_a16_sliced_k_mma<Schedule>(
+        q4_linear_operands(x, weight),
+        LinearBf16Output{static_cast<__nv_bfloat16*>(out.data), kRows}, LinearIdentityEpilogue{},
+        stream);
+}
+
+template <class Schedule>
+void q4_mma(const Tensor& x, const Weight& weight, Tensor& out, cudaStream_t stream) {
+    launch_q4_a16_mma<Schedule>(q4_linear_operands(x, weight),
+                                LinearBf16Output{static_cast<__nv_bfloat16*>(out.data), kRows},
+                                LinearIdentityEpilogue{}, stream);
+}
+
+template <int StaticK>
+void q4_projection(const Tensor& x, const Weight& weight, Tensor& out, cudaStream_t stream) {
+    using MmaR32T32  = Q4A16MmaSchedule<32, 32, 64, 16, 16, 3, 2, Q4MmaFragmentPipeline::Serial,
+                                        Cache::cg, Cache::cg, Q4ScaleLoad::Pair32>;
+    using MmaR32T64  = Q4A16MmaSchedule<32, 64, 64, 16, 32, 3, 2, Q4MmaFragmentPipeline::Serial,
+                                        Cache::cg, Cache::cg, Q4ScaleLoad::Pair32>;
+    using MmaR64T128 = Q4A16MmaSchedule<64, 128, 64, 64, 32, 2, 1, Q4MmaFragmentPipeline::Serial,
+                                        Cache::cg, Cache::cg, Q4ScaleLoad::Pair32>;
+    const int tokens = x.ne[1];
+    if (tokens <= 4) return q4_sliced<4, StaticK>(x, weight, out, stream);
+    if (tokens <= 8) return q4_sliced<8, StaticK>(x, weight, out, stream);
+    if (tokens <= 16) return q4_sliced<16, StaticK>(x, weight, out, stream);
+    if (tokens <= 24) return q4_sliced<24, StaticK>(x, weight, out, stream);
+    if (tokens <= 32) return q4_sliced<32, StaticK>(x, weight, out, stream);
+    if (tokens <= 96) return q4_mma<MmaR32T32>(x, weight, out, stream);
+    if (tokens <= 192) return q4_mma<MmaR32T64>(x, weight, out, stream);
+    return q4_mma<MmaR64T128>(x, weight, out, stream);
+}
+
 __global__ void finish_kernel(const __nv_bfloat16* projected, const __nv_bfloat16* base,
                               const __nv_bfloat16* delta, __nv_bfloat16* residual, int width) {
     const int row = blockIdx.x * blockDim.x + threadIdx.x, col = blockIdx.y;
@@ -77,15 +119,23 @@ void materialized(Q8DynamicConvAddSchedule schedule, const Tensor& x, const Weig
     const int tokens  = x.ne[1] * x.ne[2];
     const Tensor flat = x.view({x.ne[0], tokens});
     Tensor result     = projected.view({kRows, tokens});
-    switch (schedule) {
-    case Q8DynamicConvAddSchedule::TiledMma: {
-        const auto& launchers = x.ne[0] == 4096 ? attention : mlp;
-        launchers[(tokens - 1) / 8](flat, weight, result, stream);
-        break;
-    }
-    case Q8DynamicConvAddSchedule::MmaK128:
-        launch_q8_a16_mma_r64x32_t64_k128_a1(flat, weight, result, stream);
-        break;
+    if (weight.qtype == QType::Q4_G64_FP16) {
+        if (x.ne[0] == 4096) {
+            q4_projection<4096>(flat, weight, result, stream);
+        } else {
+            q4_projection<17408>(flat, weight, result, stream);
+        }
+    } else {
+        switch (schedule) {
+        case Q8DynamicConvAddSchedule::TiledMma: {
+            const auto& launchers = x.ne[0] == 4096 ? attention : mlp;
+            launchers[(tokens - 1) / 8](flat, weight, result, stream);
+            break;
+        }
+        case Q8DynamicConvAddSchedule::MmaK128:
+            launch_q8_a16_mma_r64x32_t64_k128_a1(flat, weight, result, stream);
+            break;
+        }
     }
     const dim3 grid((kRows + 255) / 256, tokens);
     finish_kernel<<<grid, 256, 0, stream>>>(static_cast<const __nv_bfloat16*>(projected.data),

@@ -58,10 +58,23 @@ std::uint64_t required_q8_payload_bytes(std::int32_t input_rows) {
     return code_bytes + rows * groups * sizeof(std::uint16_t);
 }
 
+std::uint64_t required_q4_payload_bytes(std::int32_t input_rows) {
+    const std::uint64_t rows       = kHidden;
+    const std::uint64_t columns    = static_cast<std::uint64_t>(input_rows);
+    const std::uint64_t code_bytes = (rows * columns / 2U + 255U) / 256U * 256U;
+    const std::uint64_t groups     = columns / 64U;
+    return code_bytes + rows * groups * sizeof(std::uint16_t);
+}
+
 void require_finish_projection_weight(const Weight& weight, std::int32_t input_rows) {
-    const std::uint64_t payload_bytes = required_q8_payload_bytes(input_rows);
-    if (weight.qtype != QType::Q8_G32_FP16 || weight.layout != QuantLayout::RowSplit ||
-        weight.scale_dtype != DType::FP16 || weight.group_size != 32 || weight.group != 32 ||
+    // Q8 is the production format; Q4 is the DFlash2 draft experiment with the same row-split
+    // storage contract (no high plane, binary16 group scales).
+    const bool q4 = weight.qtype == QType::Q4_G64_FP16;
+    const std::uint64_t payload_bytes =
+        q4 ? required_q4_payload_bytes(input_rows) : required_q8_payload_bytes(input_rows);
+    const std::int32_t group = q4 ? 64 : 32;
+    if ((weight.qtype != QType::Q8_G32_FP16 && !q4) || weight.layout != QuantLayout::RowSplit ||
+        weight.scale_dtype != DType::FP16 || weight.group_size != group || weight.group != group ||
         weight.ndim != 2 || weight.n != kHidden || weight.k != input_rows ||
         weight.shape[0] != kHidden || weight.shape[1] != input_rows || weight.shape[2] != 1 ||
         weight.shape[3] != 1 || weight.padded_shape[0] != kHidden ||
@@ -95,10 +108,12 @@ bool overlaps(const Range& lhs, const Range& rhs) {
 void require_finish_nonoverlap(const Tensor& x, const Weight& projection_weight,
                                const Tensor& base_kernel, const Tensor& finish_delta,
                                const Tensor& residual, const WorkspaceArena& workspace) {
+    const bool q4 = projection_weight.qtype == QType::Q4_G64_FP16;
     const std::size_t code_bytes =
-        static_cast<std::size_t>(kHidden) * static_cast<std::size_t>(x.ne[0]);
+        static_cast<std::size_t>(kHidden) * static_cast<std::size_t>(x.ne[0]) / (q4 ? 2U : 1U);
     const std::size_t scale_bytes = static_cast<std::size_t>(kHidden) *
-                                    static_cast<std::size_t>(x.ne[0] / 32) * sizeof(std::uint16_t);
+                                    static_cast<std::size_t>(x.ne[0] / (q4 ? 64 : 32)) *
+                                    sizeof(std::uint16_t);
     const std::array<Range, 7> ranges{{
         {x.data, x.bytes(), "x"},
         {projection_weight.qdata, code_bytes, "projection codes"},
