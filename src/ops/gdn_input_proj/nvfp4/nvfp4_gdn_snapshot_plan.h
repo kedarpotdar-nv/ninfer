@@ -4,6 +4,7 @@
 #include "core/arena.h"
 #include "core/tensor.h"
 #include "ninfer/ops/linear.h"
+#include "ops/linear/nvfp4/nvfp4_a4_plan.h"
 
 #include <cuda_runtime.h>
 
@@ -51,6 +52,17 @@ void nvfp4_gdn_snapshot_post_launch(const Tensor& projected, const Tensor& conv_
                                     Tensor& conv_states, const Tensor& valid_columns,
                                     const Tensor& initial_slot, const Tensor& snapshot_base_slot,
                                     Tensor& query, Tensor& key, Tensor& value, cudaStream_t stream);
+
+// Exact B=1 token extent whose Record route fuses projection, convolution and record publication
+// into the A4 GEMM epilogue. Other extents keep the materialized route.
+inline constexpr std::int32_t kNvfp4GdnRecordFusedTokens = 8;
+
+void nvfp4_gdn_record_fused_a4_launch(const Tensor& x, const Weight& weight,
+                                      const Tensor& conv_weight, const Tensor& conv_states,
+                                      const Tensor& valid_columns, const Tensor& initial_slot,
+                                      Tensor& conv_record, Tensor& query, Tensor& key,
+                                      Tensor& value, Tensor& z, Nvfp4A4Workspace workspace,
+                                      cudaStream_t stream);
 
 void nvfp4_gdn_record_post_launch(const Tensor& conv_record, const Tensor& conv_weight,
                                   const Tensor& conv_states, const Tensor& valid_columns,

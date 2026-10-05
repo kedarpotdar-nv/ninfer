@@ -609,6 +609,17 @@ void dispatch_single_parent_record(const Tensor& x, const Weight& weight, const 
         }
 
         auto scope = workspace.scope();
+        if (geometry.batch == 1 && geometry.width == detail::kNvfp4GdnRecordFusedTokens &&
+            allows_a4(policy)) {
+            // Same activation scratch as the materialized A4 route; the convolution runs in the
+            // GEMM epilogue, so the record plane is published once and no post kernel follows.
+            const detail::Nvfp4A4Workspace scratch =
+                detail::allocate_nvfp4_a4_workspace(workspace, geometry.width, weight.k);
+            detail::nvfp4_gdn_record_fused_a4_launch(
+                x, weight, conv_weight, conv_states, valid_columns, initial_state_slots,
+                conv_record, query, key, value, z, scratch, stream);
+            return;
+        }
         gdn_input_proj(x, weight, conv_record, z, policy, workspace, stream);
         detail::nvfp4_gdn_record_post_launch(conv_record, conv_weight, conv_states, valid_columns,
                                              initial_state_slots, query, key, value, stream);

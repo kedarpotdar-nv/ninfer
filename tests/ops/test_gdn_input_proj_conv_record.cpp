@@ -173,9 +173,9 @@ int run_case(std::string_view label, std::int32_t hidden, std::int32_t value_row
     launch();
     CUDA_CHECK(cudaStreamSynchronize(stream));
     auto activation_bits = bf16_bits(activation);
-    if (width == 2 || width == 9 || width == 10 || width == 16) {
-        // 2 is the bottom of the Q5 parent's split4 band, 9 the count that used to be its top, 10 the
-        // count that is its top now, and 16 a grouped representative extent.
+    if (width == 2 || width == 8 || width == 9 || width == 10 || width == 16) {
+        // 2 is the bottom of the Q5 parent's split4 band, 9 the count that used to be its top, 10
+        // the count that is its top now, and 16 a grouped representative extent.
         cudaGraph_t graph;
         cudaGraphExec_t executable;
         CUDA_CHECK(cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal));
@@ -295,10 +295,11 @@ int run_q4_q5() {
     }
     failures += run(5, 3, {5, 3, 1}, 1491U);
     failures += run(4, 4, {4, 3, 2, 1}, 1492U);
-    // R7-review trial: the batched organisation whose aggregate column count is 8, which is inside the
-    // range the fused template covers when the request is read from the flattened token axis. The dense
-    // case checks the history reload at the request boundary, and the masked one additionally puts an
-    // invalid tail in the second request, so the boundary is checked next to a zeroed column.
+    // R7-review trial: the batched organisation whose aggregate column count is 8, which is inside
+    // the range the fused template covers when the request is read from the flattened token axis.
+    // The dense case checks the history reload at the request boundary, and the masked one
+    // additionally puts an invalid tail in the second request, so the boundary is checked next to a
+    // zeroed column.
     failures += run(4, 2, {}, 1493U);
     failures += run(4, 2, {4, 2}, 1494U);
     failures += qk.verify_preserved("Q4 record qk weight");
@@ -391,6 +392,11 @@ int run_nvfp4() {
             failures += run(width, 1, {}, policy, 1600U + width);
             failures += run(width, 8, ragged(width, 8), policy, 1650U + width);
         }
+        // The fused B=1 T=8 A4 Record route must mask and preserve every valid prefix exactly
+        // like the materialized route it replaces.
+        for (int valid = 1; valid <= 8; ++valid) {
+            failures += run(8, 1, {valid}, policy, 1690U + valid);
+        }
     }
     failures += parent.verify_preserved("NVFP4 record parent weight");
     return failures;
@@ -428,6 +434,8 @@ int run_fp8() {
         quantized_weight::make_patterned_weight(QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, 1701U));
     int failures = 0;
     for (auto policy : {ops::LinearPolicy::A16Only, ops::LinearPolicy::AllowA8}) {
+        for (int valid = 1; valid <= 8; ++valid)
+            failures += run_fp8_case(parent, 8, 1, {valid}, policy, 1900U + valid);
         for (int width = 2; width <= 16; ++width) {
             failures += run_fp8_case(parent, width, 1, {}, policy, 1700U + width);
             failures += run_fp8_case(parent, width, 8, ragged(width, 8), policy, 1750U + width);
