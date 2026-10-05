@@ -10,6 +10,7 @@
 #include <vector>
 #include <string_view>
 #include <utility>
+#include <iterator>
 
 namespace ninfer::serve {
 
@@ -127,13 +128,20 @@ void apply_openai_prompt_cache_policy(GenerationRequest& request, OpenAIPromptCa
     }
 
     std::optional<CacheBoundary>* automatic_target = nullptr;
+    std::optional<CacheBoundary>* preceding_target = nullptr;
     for (auto turn = request.messages.rbegin(); turn != request.messages.rend(); ++turn) {
         if (!turn->tool_calls.empty()) {
             automatic_target = &turn->cache_boundary_after;
-            break;
-        }
-        if (!turn->content.empty()) {
+        } else if (!turn->content.empty()) {
             automatic_target = &turn->content.back().cache_boundary_after;
+        }
+        if (automatic_target != nullptr) {
+            // Agent loops that rewrite their final message every turn share only the prefix up to
+            // the preceding message boundary; --agent-prompt-cache makes that boundary the second
+            // automatic candidate.
+            if (std::next(turn) != request.messages.rend()) {
+                preceding_target = &std::next(turn)->cache_boundary_after;
+            }
             break;
         }
     }
@@ -145,13 +153,21 @@ void apply_openai_prompt_cache_policy(GenerationRequest& request, OpenAIPromptCa
         policy.automatic != OpenAIPromptCacheAutomatic::Disabled && automatic_target != nullptr &&
         (automatic_target->has_value() ||
          explicit_boundaries.size() < kMaximumExplicitPromptCacheMarkers);
-    const bool automatic_merges_explicit   = automatic_enabled && automatic_target->has_value();
-    const std::size_t explicit_write_slots = !automatic_enabled || automatic_merges_explicit
-                                                 ? kMaximumExplicitPromptCacheMarkers
-                                                 : kMaximumExplicitPromptCacheMarkers - 1U;
-    const std::size_t first_selected       = explicit_boundaries.size() > explicit_write_slots
-                                                 ? explicit_boundaries.size() - explicit_write_slots
-                                                 : 0U;
+    const bool automatic_merges_explicit = automatic_enabled && automatic_target->has_value();
+    const std::size_t automatic_new_writes =
+        automatic_enabled && !automatic_merges_explicit ? 1U : 0U;
+    const bool preceding_enabled =
+        policy.preceding_message_candidate && automatic_enabled && preceding_target != nullptr &&
+        (preceding_target->has_value() ||
+         explicit_boundaries.size() + automatic_new_writes < kMaximumExplicitPromptCacheMarkers);
+    const bool preceding_merges_explicit = preceding_enabled && preceding_target->has_value();
+    const std::size_t preceding_new_writes =
+        preceding_enabled && !preceding_merges_explicit ? 1U : 0U;
+    const std::size_t explicit_write_slots =
+        kMaximumExplicitPromptCacheMarkers - automatic_new_writes - preceding_new_writes;
+    const std::size_t first_selected = explicit_boundaries.size() > explicit_write_slots
+                                           ? explicit_boundaries.size() - explicit_write_slots
+                                           : 0U;
     for (std::size_t index = 0; index < explicit_boundaries.size(); ++index) {
         if (index < first_selected) {
             explicit_boundaries[index]->reset();
@@ -172,6 +188,13 @@ void apply_openai_prompt_cache_policy(GenerationRequest& request, OpenAIPromptCa
             automatic_target->value().evidence |= evidence;
         } else {
             *automatic_target = CacheBoundary{.evidence = evidence};
+        }
+        if (preceding_enabled) {
+            if (*preceding_target) {
+                preceding_target->value().evidence |= evidence;
+            } else {
+                *preceding_target = CacheBoundary{.evidence = evidence};
+            }
         }
     }
     // OpenAI already defines the automatic/explicit write policy for every request. Existing

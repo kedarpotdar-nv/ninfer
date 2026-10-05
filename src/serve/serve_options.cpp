@@ -126,7 +126,7 @@ std::string serve_usage_text(const char* argv0) {
            "[--response-store-max-records N] [--response-store-max-mib N] "
            "[--kv-dtype bf16|int8|fp8|nvfp4|k8v4] [--spec mtp|dflash|dflash2 --draft-tokens N] "
            "[--default-max-tokens N] [--default-thinking-budget N] "
-           "[--vision] [--no-cuda-graph] [--no-prefix-reuse] "
+           "[--vision] [--no-cuda-graph] [--no-prefix-reuse] [--agent-prompt-cache] "
            "[--chat-template FILE] [--lm-head-draft] [--no-thinking] [--preserve-thinking] "
            "[--cors] "
            "[--temperature F] [--top-p F] [--top-k N] [--min-p F] [--presence-penalty F] "
@@ -151,6 +151,8 @@ std::string serve_usage_text(const char* argv0) {
            " MiB of sizing headroom\n"
            "       --no-prefix-reuse disables cross-request history; request pause/replay "
            "resources remain available\n"
+           "       --agent-prompt-cache also writes an automatic prompt-cache marker before the "
+           "final message so agent loops that rewrite it still reuse the earlier history\n"
            "       context defaults: device-state=max-concurrency; Host budget is resolved from "
            "8192 MiB plus eight native StateImages\n"
            "       --device-state-slots is extra capacity beyond active lanes; "
@@ -308,6 +310,8 @@ ServeOptions parse_serve_options(int argc, char** argv) {
             options.use_cuda_graph = false;
         } else if (arg == "--no-prefix-reuse") {
             options.allow_prefix_reuse = false;
+        } else if (arg == "--agent-prompt-cache") {
+            options.agent_prompt_cache = true;
         } else if (arg == "--lm-head-draft") {
             options.speculative.proposal_head = ProposalHead::Optimized;
         } else if (arg == "--chat-template") {

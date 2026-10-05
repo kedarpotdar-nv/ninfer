@@ -5,6 +5,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <limits>
@@ -279,6 +280,30 @@ int test_prompt_cache_boundaries() {
                   tool_prompt.context_cache.markers[0].location == Location::MessagePartBoundary &&
                   tool_prompt.context_cache.markers[0].after_message_count == 3,
               "tool results retain their content boundary when a result group grows");
+
+    RequestLimits agent_limits      = limits();
+    agent_limits.agent_prompt_cache = true;
+    const auto agent_prompt = prompt(parse_chat_completion_request(tool, agent_limits).generation);
+    const auto& agent_markers = agent_prompt.context_cache.markers;
+    failures += check(
+        agent_markers.size() == 2 &&
+            std::all_of(
+                agent_markers.begin(), agent_markers.end(),
+                [](const auto& marker) { return marker.evidence == Evidence::DefaultAutomatic; }) &&
+            std::any_of(agent_markers.begin(), agent_markers.end(),
+                        [](const auto& marker) {
+                            return marker.location == Location::MessageBoundary &&
+                                   marker.after_message_count == 2;
+                        }) &&
+            std::any_of(agent_markers.begin(), agent_markers.end(),
+                        [](const auto& marker) {
+                            return marker.location == Location::MessagePartBoundary &&
+                                   marker.after_message_count == 3;
+                        }),
+        "--agent-prompt-cache adds the preceding message boundary as a second automatic marker");
+    const auto default_again = prompt(parse(tool).generation);
+    failures += check(default_again.context_cache.markers.size() == 1,
+                      "the preceding candidate stays off without --agent-prompt-cache");
     return failures;
 }
 

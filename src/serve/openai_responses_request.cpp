@@ -1157,7 +1157,8 @@ OpenAIResponsesCreateRequest parse_openai_responses_create_request(const Json& b
     require_object(body);
     validate_common_top_level(body, true);
     reject_unsupported_platform_fields(body);
-    const OpenAIPromptCachePolicy cache_policy = parse_openai_prompt_cache_policy(body);
+    OpenAIPromptCachePolicy cache_policy     = parse_openai_prompt_cache_policy(body);
+    cache_policy.preceding_message_candidate = limits.agent_prompt_cache;
 
     ParsedPromptFields parsed  = parse_prompt_fields(body, limits);
     parsed.prompt.cache_policy = cache_policy;

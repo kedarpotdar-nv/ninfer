@@ -21,6 +21,10 @@ enum class OpenAIPromptCacheAutomatic : std::uint8_t {
 
 struct OpenAIPromptCachePolicy {
     OpenAIPromptCacheAutomatic automatic = OpenAIPromptCacheAutomatic::Default;
+    // Server-level opt-in (--agent-prompt-cache): also write an automatic marker at the
+    // boundary before the final message so agent loops that rewrite their final message
+    // every turn still share the preceding history.
+    bool preceding_message_candidate = false;
 };
 
 [[nodiscard]] bool parse_openai_prompt_cache_breakpoint(const RequestJson& value,

@@ -44,7 +44,8 @@ private:
 
 // Server-side context needed while parsing/validating a request.
 struct RequestLimits {
-    int default_max_tokens = 8192;
+    int default_max_tokens  = 8192;
+    bool agent_prompt_cache = false; // --agent-prompt-cache
 };
 
 enum class ContentKind {
