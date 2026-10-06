@@ -1,0 +1,85 @@
+{
+  "new_directory": "results\\20261006T011208Z-gsm8k-test-paired",
+  "round1_directory": "C:\\Users\\kedar\\Documents\\qwen38-27b-megakernel\\results\\20261005T061640Z-gsm8k-test-paired",
+  "arms": {
+    "ninfer-best": {
+      "n": 1319,
+      "correct": 1281,
+      "accuracy_percent": 97.11902956785444,
+      "wilson_95_ci_percent": [
+        96.07047595854436,
+        97.89392103791259
+      ],
+      "status_counts": {
+        "correct": 1281,
+        "wrong_answer": 22,
+        "format_error": 1,
+        "truncated": 15
+      },
+      "results_sha256": "03c3cf13787e37b208a5c6e8c1590fb69cb65614a050cf4fd77284758f7c6a7b"
+    },
+    "llama-baseline": {
+      "n": 1319,
+      "correct": 1279,
+      "accuracy_percent": 96.96739954510993,
+      "wilson_95_ci_percent": [
+        95.89690692578176,
+        97.76511067567455
+      ],
+      "status_counts": {
+        "correct": 1279,
+        "wrong_answer": 28,
+        "truncated": 11,
+        "format_error": 1
+      },
+      "results_sha256": "080a884cd1a99d9202fbfa7bfb918ae31f89b47f477edc521d9ff981d5c0f7b8"
+    },
+    "ninfer-compact": {
+      "n": 1319,
+      "correct": 1287,
+      "accuracy_percent": 97.57391963608795,
+      "wilson_95_ci_percent": [
+        96.5952236314677,
+        98.27631154999126
+      ],
+      "status_counts": {
+        "correct": 1287,
+        "wrong_answer": 28,
+        "truncated": 4
+      },
+      "results_sha256": "81d72571b0bcba448381e38b2c67df2ac679c784fa8cc661886193c038b790d2"
+    }
+  },
+  "paired": {
+    "ninfer-best_vs_llama-baseline": {
+      "counts": {
+        "both_correct": 1270,
+        "both_wrong": 29,
+        "candidate_win": 11,
+        "candidate_loss": 9
+      },
+      "candidate_minus_baseline_pp": 0.1516300227445034,
+      "bootstrap_95_ci_pp": [
+        -0.530705079605762,
+        0.8339651250947687
+      ],
+      "exact_mcnemar_two_sided_p": 0.8238029479980469,
+      "within_2pp_noninferiority_screen": true
+    },
+    "ninfer-best_vs_ninfer-compact": {
+      "counts": {
+        "both_correct": 1277,
+        "both_wrong": 28,
+        "candidate_win": 4,
+        "candidate_loss": 10
+      },
+      "candidate_minus_baseline_pp": -0.45489006823351025,
+      "bootstrap_95_ci_pp": [
+        -0.9855951478392722,
+        0.0758150113722517
+      ],
+      "exact_mcnemar_two_sided_p": 0.1795654296875,
+      "within_2pp_noninferiority_screen": true
+    }
+  }
+}

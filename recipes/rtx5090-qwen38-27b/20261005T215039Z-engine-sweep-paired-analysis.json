@@ -1,0 +1,122 @@
+{
+  "campaign": "results\\20261005T215039Z-engine-sweep",
+  "reference": "ninfer-public-bf16",
+  "variants": {
+    "official-b11425": {
+      "decode_tokens_s_runs": [
+        156.12878943902217,
+        156.7242843426144
+      ],
+      "decode_tokens_s_mean": 156.42653689081828,
+      "decode_tokens_s_stdev": 0.42107848449209195,
+      "latency_s_mean": 4.788143430002189,
+      "accepted_and_drafted": [
+        [
+          2760,
+          7325
+        ],
+        [
+          2760,
+          7325
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        0,
+        0
+      ],
+      "requests": 15,
+      "paired": {
+        "pairs": 2,
+        "delta_tokens_s": [
+          -66.30993031436682,
+          -64.57581140024465
+        ],
+        "speedup_ratios": [
+          0.7018957383503978,
+          0.7081979961035404
+        ],
+        "mean_speedup": 0.7050468672269691,
+        "median_speedup": 0.7050468672269691,
+        "mean_delta_tokens_s": -65.44287085730573,
+        "descriptive_95pct_t_interval": [
+          -76.45972831872393,
+          -54.426013395887544
+        ],
+        "pairs_faster": 0,
+        "requests_faster": 0,
+        "request_speedup_min": 0.5182471637564621,
+        "request_speedup_max": 0.8506391334506866
+      }
+    },
+    "ninfer-public-bf16": {
+      "decode_tokens_s_runs": [
+        222.438719753389,
+        221.30009574285904
+      ],
+      "decode_tokens_s_mean": 221.86940774812402,
+      "decode_tokens_s_stdev": 0.805128759067552,
+      "latency_s_mean": 1.8468356166539404,
+      "accepted_and_drafted": [
+        [
+          2792,
+          7136
+        ],
+        [
+          2792,
+          7136
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        15,
+        15
+      ],
+      "requests": 15
+    },
+    "ninfer-build-draftq4-bf16": {
+      "decode_tokens_s_runs": [
+        242.64843900124313,
+        241.21476232219993
+      ],
+      "decode_tokens_s_mean": 241.93160066172152,
+      "decode_tokens_s_stdev": 1.0137625017804577,
+      "latency_s_mean": 1.6937829133433602,
+      "accepted_and_drafted": [
+        [
+          2732,
+          7502
+        ],
+        [
+          2732,
+          7502
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        0,
+        0
+      ],
+      "requests": 15,
+      "paired": {
+        "pairs": 2,
+        "delta_tokens_s": [
+          20.20971924785414,
+          19.91466657934089
+        ],
+        "speedup_ratios": [
+          1.0908552219247623,
+          1.089989416915937
+        ],
+        "mean_speedup": 1.0904223194203495,
+        "median_speedup": 1.0904223194203495,
+        "mean_delta_tokens_s": 20.062192913597514,
+        "descriptive_95pct_t_interval": [
+          18.187723310532835,
+          21.936662516662192
+        ],
+        "pairs_faster": 2,
+        "requests_faster": 10,
+        "request_speedup_min": 0.734175240572953,
+        "request_speedup_max": 1.4842360099357992
+      }
+    }
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "throughput_8k": {
+    "sweep": "results/20261005T215039Z-engine-sweep",
+    "requests_per_category": {
+      "high_entropy": 5,
+      "mixed": 5,
+      "low_entropy": 5
+    },
+    "repeats": {
+      "official-b11425": 2,
+      "ninfer-public-bf16": 2,
+      "ninfer-build-draftq4-bf16": 2
+    },
+    "labels": {
+      "official-b11425": "llama.cpp b11425 (Q4_K_M + DFlash2 Q4_K_M)",
+      "ninfer-public-bf16": "Public NInfer 68c5435, FP8 artifact",
+      "ninfer-build-draftq4-bf16": "This fork, draft-Q4 artifact"
+    },
+    "decode_tokens_per_second": {
+      "high_entropy": {
+        "official-b11425": 141.28392063600333,
+        "ninfer-public-bf16": 194.29611250193523,
+        "ninfer-build-draftq4-bf16": 207.33914379170062
+      },
+      "low_entropy": {
+        "official-b11425": 149.27837429277025,
+        "ninfer-public-bf16": 211.78024708759276,
+        "ninfer-build-draftq4-bf16": 236.01926553607865
+      },
+      "mixed": {
+        "official-b11425": 178.7173157436813,
+        "ninfer-public-bf16": 259.5318636548441,
+        "ninfer-build-draftq4-bf16": 282.43639265738534
+      },
+      "overall": {
+        "official-b11425": 156.42653689081828,
+        "ninfer-public-bf16": 221.869407748124,
+        "ninfer-build-draftq4-bf16": 241.93160066172152
+      }
+    }
+  },
+  "qualitative": {
+    "sweep": "results/20261005T212351Z-engine-sweep",
+    "requests_per_category": {
+      "coding": 3,
+      "humanities": 3,
+      "math": 3,
+      "multilingual": 3,
+      "qa": 3,
+      "rag": 3,
+      "reasoning": 3,
+      "roleplay": 3,
+      "stem": 3,
+      "summarization": 3,
+      "writing": 3
+    },
+    "repeats": {
+      "ninfer-public-bf16": 3,
+      "ninfer-build-draftq4-pdl0-bf16": 3,
+      "ninfer-build-draftq4-pdl1-bf16": 3
+    },
+    "labels": {
+      "ninfer-public-bf16": "Public NInfer 68c5435, FP8 artifact",
+      "ninfer-build-draftq4-pdl0-bf16": "This fork, NINFER_PDL=0",
+      "ninfer-build-draftq4-pdl1-bf16": "This fork, draft-Q4 artifact"
+    },
+    "decode_tokens_per_second": {
+      "coding": {
+        "ninfer-public-bf16": 226.1467452207785,
+        "ninfer-build-draftq4-pdl0-bf16": 281.3753090329714,
+        "ninfer-build-draftq4-pdl1-bf16": 286.32775668526114
+      },
+      "humanities": {
+        "ninfer-public-bf16": 193.00935337757798,
+        "ninfer-build-draftq4-pdl0-bf16": 235.6273802664617,
+        "ninfer-build-draftq4-pdl1-bf16": 240.0740185988969
+      },
+      "math": {
+        "ninfer-public-bf16": 297.43587650224134,
+        "ninfer-build-draftq4-pdl0-bf16": 320.2998144027147,
+        "ninfer-build-draftq4-pdl1-bf16": 326.3877475836822
+      },
+      "multilingual": {
+        "ninfer-public-bf16": 172.6989154899005,
+        "ninfer-build-draftq4-pdl0-bf16": 255.40853251562677,
+        "ninfer-build-draftq4-pdl1-bf16": 259.3900293576292
+      },
+      "qa": {
+        "ninfer-public-bf16": 193.50179751866904,
+        "ninfer-build-draftq4-pdl0-bf16": 199.12686270920028,
+        "ninfer-build-draftq4-pdl1-bf16": 202.2944429317951
+      },
+      "rag": {
+        "ninfer-public-bf16": 293.57861309528255,
+        "ninfer-build-draftq4-pdl0-bf16": 308.7295612085668,
+        "ninfer-build-draftq4-pdl1-bf16": 314.0515170581326
+      },
+      "reasoning": {
+        "ninfer-public-bf16": 225.00868103156517,
+        "ninfer-build-draftq4-pdl0-bf16": 269.9158378485243,
+        "ninfer-build-draftq4-pdl1-bf16": 274.8084061253572
+      },
+      "roleplay": {
+        "ninfer-public-bf16": 210.48639591758584,
+        "ninfer-build-draftq4-pdl0-bf16": 254.11917677647213,
+        "ninfer-build-draftq4-pdl1-bf16": 258.38483337772806
+      },
+      "stem": {
+        "ninfer-public-bf16": 257.68758391047317,
+        "ninfer-build-draftq4-pdl0-bf16": 275.6742776267551,
+        "ninfer-build-draftq4-pdl1-bf16": 280.3719059098894
+      },
+      "summarization": {
+        "ninfer-public-bf16": 246.71869583997423,
+        "ninfer-build-draftq4-pdl0-bf16": 259.3604170356551,
+        "ninfer-build-draftq4-pdl1-bf16": 263.70799944648894
+      },
+      "writing": {
+        "ninfer-public-bf16": 190.76053464515894,
+        "ninfer-build-draftq4-pdl0-bf16": 276.3600922186538,
+        "ninfer-build-draftq4-pdl1-bf16": 281.1642006077078
+      },
+      "overall": {
+        "ninfer-public-bf16": 227.91210841356428,
+        "ninfer-build-draftq4-pdl0-bf16": 266.90884196741837,
+        "ninfer-build-draftq4-pdl1-bf16": 271.5420779711426
+      }
+    }
+  }
+}

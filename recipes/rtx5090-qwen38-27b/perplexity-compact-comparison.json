@@ -1,0 +1,53 @@
+{
+  "baseline": "C:\\Users\\kedar\\Documents\\qwen38-27b-megakernel\\results\\ninfer-compact-ppl-baseline\\report.json",
+  "candidate": "results\\ninfer-compact-ppl-gdn4-a4\\report.json",
+  "baseline_report_sha256": "085a941777a689d5a8d65d894c5fe536370b6ee63b75e390927123736221172b",
+  "candidate_report_sha256": "24aa37410303ab0f680e572f7a81e3b25ee2be54fc8661b905181e3b7c1c6a66",
+  "same_corpus_windows_and_counts": true,
+  "scored_tokens": 261167,
+  "baseline_ppl": 4.316020542144683,
+  "candidate_ppl": 4.333744585901581,
+  "overall_ppl_ratio": 1.0041065707597607,
+  "overall_nll_delta": 0.004098161811491252,
+  "passes_1pct_overall_limit": true,
+  "domains": [
+    {
+      "domain": "chinese_reference",
+      "baseline_ppl": 4.994741323382596,
+      "candidate_ppl": 5.005045020304375,
+      "ppl_ratio": 1.00206290901864,
+      "nll_delta": 0.002060784143611105,
+      "scored_tokens": 65510,
+      "passes_2pct_limit": true
+    },
+    {
+      "domain": "english_long_form",
+      "baseline_ppl": 6.865931423938603,
+      "candidate_ppl": 6.906851569605835,
+      "ppl_ratio": 1.0059598826642167,
+      "nll_delta": 0.005942192815017178,
+      "scored_tokens": 65455,
+      "passes_2pct_limit": true
+    },
+    {
+      "domain": "english_reference",
+      "baseline_ppl": 6.1006930085789115,
+      "candidate_ppl": 6.102273025310665,
+      "ppl_ratio": 1.0002589897130592,
+      "nll_delta": 0.00025895618101290374,
+      "scored_tokens": 65304,
+      "passes_2pct_limit": true
+    },
+    {
+      "domain": "ninfer_code",
+      "baseline_ppl": 1.6461657893517025,
+      "candidate_ppl": 1.6596503338136783,
+      "ppl_ratio": 1.0081914862702173,
+      "nll_delta": 0.008158118145732918,
+      "scored_tokens": 64898,
+      "passes_2pct_limit": true
+    }
+  ],
+  "passes_predeclared_screen": true,
+  "scope": "Fixed four-domain, truncated-context causal scoring only; not BF16/GGUF or downstream task-quality parity."
+}

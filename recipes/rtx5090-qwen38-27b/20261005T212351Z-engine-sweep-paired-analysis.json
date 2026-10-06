@@ -1,0 +1,144 @@
+{
+  "campaign": "results\\20261005T212351Z-engine-sweep",
+  "reference": "ninfer-build-draftq4-pdl0-bf16",
+  "variants": {
+    "ninfer-public-bf16": {
+      "decode_tokens_s_runs": [
+        227.13776404124903,
+        228.1560994847512,
+        228.44246171469266
+      ],
+      "decode_tokens_s_mean": 227.91210841356428,
+      "decode_tokens_s_stdev": 0.685716950998371,
+      "latency_s_mean": 1.1739006313022622,
+      "accepted_and_drafted": [
+        [
+          5675,
+          15192
+        ],
+        [
+          5675,
+          15192
+        ],
+        [
+          5675,
+          15192
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        0,
+        0,
+        0
+      ],
+      "requests": 33,
+      "paired": {
+        "pairs": 3,
+        "delta_tokens_s": [
+          -39.938221824606416,
+          -38.044711737740926,
+          -39.007267099214886
+        ],
+        "speedup_ratios": [
+          0.8504612022862055,
+          0.8570826604057831,
+          0.854151031402405
+        ],
+        "mean_speedup": 0.8538982980314646,
+        "median_speedup": 0.854151031402405,
+        "mean_delta_tokens_s": -38.99673355385408,
+        "descriptive_95pct_t_interval": [
+          -41.34890246225926,
+          -36.644564645448895
+        ],
+        "pairs_faster": 0,
+        "requests_faster": 5,
+        "request_speedup_min": 0.47998017353610856,
+        "request_speedup_max": 1.1364207379863307
+      }
+    },
+    "ninfer-build-draftq4-pdl0-bf16": {
+      "decode_tokens_s_runs": [
+        267.07598586585544,
+        266.2008112224921,
+        267.44972881390754
+      ],
+      "decode_tokens_s_mean": 266.90884196741837,
+      "decode_tokens_s_stdev": 0.6410160681490606,
+      "latency_s_mean": 1.0178357575787231,
+      "accepted_and_drafted": [
+        [
+          5924,
+          14829
+        ],
+        [
+          5924,
+          14829
+        ],
+        [
+          5924,
+          14829
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        33,
+        33,
+        33
+      ],
+      "requests": 33
+    },
+    "ninfer-build-draftq4-pdl1-bf16": {
+      "decode_tokens_s_runs": [
+        271.8814081679959,
+        271.63160427638803,
+        271.1132214690438
+      ],
+      "decode_tokens_s_mean": 271.5420779711426,
+      "decode_tokens_s_stdev": 0.3918404274827999,
+      "latency_s_mean": 1.002442885855815,
+      "accepted_and_drafted": [
+        [
+          5924,
+          14829
+        ],
+        [
+          5924,
+          14829
+        ],
+        [
+          5924,
+          14829
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        33,
+        33,
+        33
+      ],
+      "requests": 33,
+      "paired": {
+        "pairs": 3,
+        "delta_tokens_s": [
+          4.805422302140471,
+          5.430793053895911,
+          3.663492655136281
+        ],
+        "speedup_ratios": [
+          1.0179927157679916,
+          1.0204011138394196,
+          1.0136978738822553
+        ],
+        "mean_speedup": 1.017363901163222,
+        "median_speedup": 1.0179927157679916,
+        "mean_delta_tokens_s": 4.633236003724221,
+        "descriptive_95pct_t_interval": [
+          2.4069116441537637,
+          6.859560363294678
+        ],
+        "pairs_faster": 3,
+        "requests_faster": 33,
+        "request_speedup_min": 1.0148333090308737,
+        "request_speedup_max": 1.0208671605413293
+      }
+    }
+  }
+}

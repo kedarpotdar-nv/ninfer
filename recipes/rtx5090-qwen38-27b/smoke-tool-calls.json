@@ -1,0 +1,59 @@
+{
+  "checks": [
+    {
+      "auto_tool_call": true,
+      "arguments_valid": true,
+      "finish_reason": "tool_calls",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"city\":\"Paris\"}",
+            "name": "get_weather"
+          },
+          "id": "call_f002e96708640d82",
+          "type": "function"
+        }
+      ],
+      "content": ""
+    },
+    {
+      "followup_uses_result": true,
+      "followup_tool_calls": null,
+      "cached_tokens": 400,
+      "prompt_tokens": 439,
+      "content": "It's currently 17°C (63°F) in Paris with light rain. You might want to bring an umbrella! 🌧️"
+    },
+    {
+      "none_suppresses_calls": true,
+      "content": "I do not have access to real-time data or external tools, so I cannot check the current weather in Paris.\n\nTo get the most accurate and up-to-date weather information, please:\n1. Check a reliable weat"
+    },
+    {
+      "forced_call": false,
+      "tool_calls": [],
+      "error": {
+        "code": "tool_choice_not_supported",
+        "message": "tool_choice for function 'get_time' requires that exact function to be called, which NInfer cannot guarantee",
+        "param": "tool_choice",
+        "type": "invalid_request_error"
+      }
+    },
+    {
+      "required_call": false,
+      "tool_calls": [],
+      "error": {
+        "code": "tool_choice_not_supported",
+        "message": "tool_choice='required' requires at least one tool call, which NInfer cannot guarantee",
+        "param": "tool_choice",
+        "type": "invalid_request_error"
+      }
+    },
+    {
+      "two_tools_requested": [
+        "get_time",
+        "get_weather"
+      ],
+      "count": 2,
+      "error": null
+    }
+  ]
+}

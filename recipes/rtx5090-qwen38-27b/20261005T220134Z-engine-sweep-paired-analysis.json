@@ -1,0 +1,76 @@
+{
+  "campaign": "results\\20261005T220134Z-engine-sweep",
+  "reference": "ninfer-gdn4-bf16",
+  "variants": {
+    "ninfer-gdn4-bf16": {
+      "decode_tokens_s_runs": [
+        233.60576659611309,
+        235.23530330182587
+      ],
+      "decode_tokens_s_mean": 234.42053494896948,
+      "decode_tokens_s_stdev": 1.1522564548018945,
+      "latency_s_mean": 1.7269355433488576,
+      "accepted_and_drafted": [
+        [
+          2750,
+          7391
+        ],
+        [
+          2750,
+          7391
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        15,
+        15
+      ],
+      "requests": 15
+    },
+    "ninfer-build-draftq4-bf16": {
+      "decode_tokens_s_runs": [
+        241.7190994532252,
+        240.9522426197502
+      ],
+      "decode_tokens_s_mean": 241.3356710364877,
+      "decode_tokens_s_stdev": 0.542249667149418,
+      "latency_s_mean": 1.699350169991764,
+      "accepted_and_drafted": [
+        [
+          2732,
+          7502
+        ],
+        [
+          2732,
+          7502
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        12,
+        12
+      ],
+      "requests": 15,
+      "paired": {
+        "pairs": 2,
+        "delta_tokens_s": [
+          8.113332857112113,
+          5.716939317924329
+        ],
+        "speedup_ratios": [
+          1.0347308757627522,
+          1.0243030669192925
+        ],
+        "mean_speedup": 1.0295169713410224,
+        "median_speedup": 1.0295169713410224,
+        "mean_delta_tokens_s": 6.915136087518221,
+        "descriptive_95pct_t_interval": [
+          -8.309152066941769,
+          22.13942424197821
+        ],
+        "pairs_faster": 2,
+        "requests_faster": 12,
+        "request_speedup_min": 0.9100316743672782,
+        "request_speedup_max": 1.0981750792128937
+      }
+    }
+  }
+}
