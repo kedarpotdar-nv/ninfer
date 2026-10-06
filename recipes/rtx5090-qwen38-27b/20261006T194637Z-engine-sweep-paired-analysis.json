@@ -1,0 +1,59 @@
+{
+  "campaign": "C:\\Users\\kedar\\Documents\\qwen38-27b-megakernel\\results\\20261006T194637Z-engine-sweep",
+  "reference": "ninfer-fork-draftq4-bf16",
+  "variants": {
+    "ninfer-fork-draftq4-bf16": {
+      "decode_tokens_s_runs": [
+        249.41728696698058
+      ],
+      "decode_tokens_s_mean": 249.41728696698058,
+      "decode_tokens_s_stdev": null,
+      "latency_s_mean": 1.6503006866589809,
+      "accepted_and_drafted": [
+        [
+          2753,
+          7370
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        15
+      ],
+      "requests": 15
+    },
+    "ninfer-build-draftq4-bf16": {
+      "decode_tokens_s_runs": [
+        249.40591348534028
+      ],
+      "decode_tokens_s_mean": 249.40591348534028,
+      "decode_tokens_s_stdev": null,
+      "latency_s_mean": 1.6556728733237833,
+      "accepted_and_drafted": [
+        [
+          2753,
+          7370
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        15
+      ],
+      "requests": 15,
+      "paired": {
+        "pairs": 1,
+        "delta_tokens_s": [
+          -0.011373481640305272
+        ],
+        "speedup_ratios": [
+          0.9999543997860829
+        ],
+        "mean_speedup": 0.9999543997860829,
+        "median_speedup": 0.9999543997860829,
+        "mean_delta_tokens_s": -0.011373481640305272,
+        "descriptive_95pct_t_interval": null,
+        "pairs_faster": 0,
+        "requests_faster": 7,
+        "request_speedup_min": 0.9963097127835221,
+        "request_speedup_max": 1.0052626860338008
+      }
+    }
+  }
+}

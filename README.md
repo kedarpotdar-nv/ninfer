@@ -15,7 +15,11 @@ Provenance of the numbers: all measurements below were taken with the branch as 
 commit, before `ops(linear_add): keep upstream's K=6144 NVFP4 A4 threshold`. That later commit restores upstream's
 route selection for NVFP4 `linear_add` weights with K=6144; the selected artifact (and the public one) contains no
 such weight (its 64 K=6144 output projections are FP8, `AllowA8`; NVFP4 tensors are at K=5120 and K=17408 only), so
-the code path never executed during these runs and the current head reproduces them unchanged.
+the code path never executed during these runs and the current head reproduces them unchanged. Checked directly:
+the binary used for the GSM8K, BFCL and tool-calling runs (built before the revert) and the current head, both on
+the selected artifact and the 15 `throughput_8k` requests, produced 15 of 15 byte-identical responses with identical
+draft acceptance (2,753 of 7,370) and identical decode rate (249.4 vs 249.4 tok/s;
+`20261006T194637Z-engine-sweep-paired-analysis.json`). The accuracy results therefore apply to the head as pushed.
 
 **Confirmation on the pushed head, and the engine-only share** (`throughput_8k`, same harness, two alternating
 repeats, run the next day; `20261006T193732Z-engine-sweep-paired-analysis.json`, `speed-bench-category-decode.json`
