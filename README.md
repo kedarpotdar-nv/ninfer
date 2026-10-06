@@ -178,26 +178,27 @@ function-calling mode: the request carries `tools`, the model answers with `tool
 checkers grade them. Temperature 0.001 (the harness default), four requests in flight on both servers, both servers
 exposing the model id `qwen3.8-27b`. Scores per category and arm: `bfcl-single-turn-scores.json`.
 
-| Category | This build | llama.cpp b11425 Q4_K_M | Delta (pp) |
-| --- | ---: | ---: | ---: |
-| simple_python | 93.75% (375/400) | 93.75% (375/400) | 0.00 |
-| simple_java | 61.00% (61/100) | 61.00% (61/100) | 0.00 |
-| simple_javascript | 72.00% (36/50) | 68.00% (34/50) | +4.00 |
-| multiple | 94.00% (188/200) | 95.50% (191/200) | -1.50 |
-| parallel | 93.00% (186/200) | 93.50% (187/200) | -0.50 |
-| parallel_multiple | 85.50% (171/200) | 86.00% (172/200) | -0.50 |
-| irrelevance | 80.83% (194/240) | 79.17% (190/240) | +1.67 |
-| live_simple | 88.76% (229/258) | 84.88% (219/258) | +3.88 |
-| live_multiple | 78.92% (831/1053) | 78.44% (826/1053) | +0.47 |
-| live_parallel | 81.25% (13/16) | 81.25% (13/16) | 0.00 |
-| live_parallel_multiple | 79.17% (19/24) | 75.00% (18/24) | +4.17 |
-| live_irrelevance | 75.34% (666/884) | 74.89% (662/884) | +0.45 |
-| live_relevance | 75.00% (12/16) | 75.00% (12/16) | 0.00 |
-| **All single-turn entries, micro-average** | **81.87%** (2,981/3,641) | **81.30%** (2,960/3,641) | **+0.58** |
-| BFCL Non-Live AST accuracy (group mean) | 87.02% | 87.31% | -0.29 |
-| BFCL Live accuracy (group mean) | 80.83% | 79.64% | +1.19 |
+| Category | This build | llama.cpp b11425 Q4_K_M | Delta (pp) | Public NInfer `68c5435`, FP8 artifact |
+| --- | ---: | ---: | ---: | ---: |
+| simple_python | 93.75% (375/400) | 93.75% (375/400) | 0.00 | 93.00% (372/400) |
+| simple_java | 61.00% (61/100) | 61.00% (61/100) | 0.00 | 61.00% (61/100) |
+| simple_javascript | 72.00% (36/50) | 68.00% (34/50) | +4.00 | 68.00% (34/50) |
+| multiple | 94.00% (188/200) | 95.50% (191/200) | -1.50 | 93.00% (186/200) |
+| parallel | 93.00% (186/200) | 93.50% (187/200) | -0.50 | 94.50% (189/200) |
+| parallel_multiple | 85.50% (171/200) | 86.00% (172/200) | -0.50 | 84.00% (168/200) |
+| irrelevance | 80.83% (194/240) | 79.17% (190/240) | +1.67 | 80.00% (192/240) |
+| live_simple | 88.76% (229/258) | 84.88% (219/258) | +3.88 | 86.82% (224/258) |
+| live_multiple | 78.92% (831/1053) | 78.44% (826/1053) | +0.47 | 79.11% (833/1053) |
+| live_parallel | 81.25% (13/16) | 81.25% (13/16) | 0.00 | 81.25% (13/16) |
+| live_parallel_multiple | 79.17% (19/24) | 75.00% (18/24) | +4.17 | 75.00% (18/24) |
+| live_irrelevance | 75.34% (666/884) | 74.89% (662/884) | +0.45 | 75.57% (668/884) |
+| live_relevance | 75.00% (12/16) | 75.00% (12/16) | 0.00 | 81.25% (13/16) |
+| **All single-turn entries, micro-average** | **81.87%** (2,981/3,641) | **81.30%** (2,960/3,641) | **+0.58** | 81.60% (2,971/3,641) |
+| BFCL Non-Live AST accuracy (group mean) | 87.02% | 87.31% | -0.29 | 86.38% |
+| BFCL Live accuracy (group mean) | 80.83% | 79.64% | +1.19 | 80.53% |
 
-Function-calling quality is the same within noise: the two arms agree exactly on five categories, and no category
-moves by more than three entries except `live_simple` (+10 for this build). Every one of the 3,641 requests returned
-a response on both servers. Multi-turn and agentic BFCL categories were not run. Forced tool choice (a named function
+Function-calling quality is the same within noise across all three servers: this build and llama.cpp agree exactly
+on five categories, and no category moves by more than three entries except `live_simple` (+10 for this build).
+Against public NInfer with the FP8 artifact the micro-average is +0.27 pp with ten categories within two entries.
+Every one of the 3,641 requests returned a response on all three servers. Multi-turn and agentic BFCL categories were not run. Forced tool choice (a named function
 or `tool_choice: required`) is not part of this suite and is rejected by NInfer by upstream policy.

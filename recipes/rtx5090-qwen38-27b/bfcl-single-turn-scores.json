@@ -1,7 +1,7 @@
 {
   "benchmark": "BFCL v4 single-turn categories",
   "bfcl_eval_version": "2026.3.23",
-  "generated_utc": "2026-10-06T04:36:12.827548+00:00",
+  "generated_utc": "2026-10-06T18:34:43.429950+00:00",
   "method": "bfcl generate with the OpenAI Chat Completions function-calling handler (tools in the request, temperature 0.001, server defaults otherwise: thinking on), 4 requests in flight; both servers expose the model as qwen3.8-27b; bfcl evaluate AST/relevance checkers; PYTHONUTF8=1 on Windows",
   "arms": {
     "ninfer": {
@@ -83,33 +83,80 @@
     },
     "ninfer-stock": {
       "model_entry": "ninfer-public-68c5435-qwen3.8-27b-FC",
-      "complete": false,
+      "complete": true,
       "categories": {
+        "live_irrelevance": {
+          "accuracy": 0.755656108597285,
+          "correct": 668,
+          "total": 884
+        },
+        "live_multiple": {
+          "accuracy": 0.7910731244064577,
+          "correct": 833,
+          "total": 1053
+        },
+        "live_parallel_multiple": {
+          "accuracy": 0.75,
+          "correct": 18,
+          "total": 24
+        },
+        "live_parallel": {
+          "accuracy": 0.8125,
+          "correct": 13,
+          "total": 16
+        },
+        "live_relevance": {
+          "accuracy": 0.8125,
+          "correct": 13,
+          "total": 16
+        },
+        "live_simple": {
+          "accuracy": 0.8682170542635659,
+          "correct": 224,
+          "total": 258
+        },
         "irrelevance": {
           "accuracy": 0.8,
           "correct": 192,
           "total": 240
+        },
+        "multiple": {
+          "accuracy": 0.93,
+          "correct": 186,
+          "total": 200
+        },
+        "parallel_multiple": {
+          "accuracy": 0.84,
+          "correct": 168,
+          "total": 200
+        },
+        "parallel": {
+          "accuracy": 0.945,
+          "correct": 189,
+          "total": 200
+        },
+        "simple_javascript": {
+          "accuracy": 0.68,
+          "correct": 34,
+          "total": 50
+        },
+        "simple_java": {
+          "accuracy": 0.61,
+          "correct": 61,
+          "total": 100
+        },
+        "simple_python": {
+          "accuracy": 0.93,
+          "correct": 372,
+          "total": 400
         }
       },
       "micro_average": {
-        "accuracy": 0.8,
-        "correct": 192,
-        "total": 240
+        "accuracy": 0.8159846196099972,
+        "correct": 2971,
+        "total": 3641
       },
-      "pending_categories": {
-        "simple_python": "0/400",
-        "simple_java": "0/100",
-        "simple_javascript": "0/50",
-        "multiple": "0/200",
-        "parallel": "0/200",
-        "parallel_multiple": "0/200",
-        "live_simple": "0/258",
-        "live_multiple": "0/1053",
-        "live_parallel": "0/16",
-        "live_parallel_multiple": "0/24",
-        "live_irrelevance": "1/884",
-        "live_relevance": "0/16"
-      }
+      "pending_categories": {}
     },
     "llamacpp": {
       "model_entry": "llamacpp-b11425-qwen3.8-27b-FC",
