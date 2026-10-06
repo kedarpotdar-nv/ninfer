@@ -53,7 +53,7 @@ void launch_bf16_kv_grouped_mma(const CausalAttentionOperands& p, Bf16KvCacheVie
         if (!input.k || !input.v) throw std::invalid_argument("BF16 grouped append requires K/V");
     }
     {
-        constexpr auto kernel = bf16_kv_grouped_mma_kernel<G, S, MultiBatch, Masked, Input>;
+        static constexpr auto kernel = bf16_kv_grouped_mma_kernel<G, S, MultiBatch, Masked, Input>;
         constexpr int bytes   = sizeof(Bf16KvGroupedStorage<G, S>);
         int dynamic           = 0;
         if constexpr (bytes > 48 * 1024) dynamic = bf16_kv_dynamic_shared<bytes, kernel>();
@@ -86,7 +86,7 @@ void launch_bf16_kv_tiled_mma(const CausalAttentionOperands& p, Bf16KvReadView c
     if (p.batch != 1)
         throw std::invalid_argument("BF16 tiled attention requires a complete single-row query");
     const auto launch = [&]<class Metadata>(Metadata metadata) {
-        constexpr auto kernel = bf16_kv_tiled_mma_kernel<Geometry, Schedule, Metadata>;
+        static constexpr auto kernel = bf16_kv_tiled_mma_kernel<Geometry, Schedule, Metadata>;
         const int bytes =
             bf16_kv_dynamic_shared<bf16_kv_tiled_shared_bytes<Geometry, Schedule>, kernel>();
         const dim3 grid(div_up(p.width, Schedule::kQueryRows), Geometry::QHeads);

@@ -23,7 +23,7 @@ void launch_k8v4_kv_grouped_mma(const CausalAttentionOperands& p, K8V4KvCacheVie
         throw std::invalid_argument("K8V4 grouped attention: invalid schedule/partials");
     if constexpr (Input::writes_cache)
         if (!input.k || !input.v) throw std::invalid_argument("K8V4 append requires K/V");
-    constexpr auto kernel =
+    static constexpr auto kernel =
         k8v4_kv_grouped_mma_kernel<G, S, MultiBatch, Masked, Input, ParallelQueries>;
     constexpr int bytes = S::kDynamicArena ? S::kArenaBytes : 0;
     if constexpr (S::kDynamicArena) {

@@ -1,10 +1,12 @@
 #include "product/media_acquire/acquire.h"
 
-#include <curl/curl.h>
+#if NINFER_HAVE_CURL
+#    include <curl/curl.h>
 
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/socket.h>
+#    include <arpa/inet.h>
+#    include <netdb.h>
+#    include <sys/socket.h>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -84,6 +86,7 @@ std::vector<std::uint8_t> decode_base64(std::string_view text) {
     return out;
 }
 
+#if NINFER_HAVE_CURL
 bool private_ipv4(std::uint32_t address) {
     const std::uint32_t a = ntohl(address);
     return (a >> 24U) == 0 || (a >> 24U) == 10 || (a >> 24U) == 127 || (a >> 16U) == 0xa9fe ||
@@ -277,6 +280,8 @@ std::vector<std::uint8_t> fetch_url(std::string url, const Policy& policy) {
     throw Error(ErrorKind::RemoteUnavailable, "too many media URL redirects");
 }
 
+#endif // NINFER_HAVE_CURL
+
 std::vector<std::uint8_t> read_path(const Source& source, const Policy& policy) {
     check_control(policy);
     std::error_code ec;
@@ -287,7 +292,7 @@ std::vector<std::uint8_t> read_path(const Source& source, const Policy& policy) 
     if (!policy.media_root.empty()) {
         const std::filesystem::path root = std::filesystem::weakly_canonical(policy.media_root, ec);
         const auto relative              = std::filesystem::relative(path, root, ec);
-        if (ec || relative.empty() || relative.native().starts_with("..")) {
+        if (ec || relative.empty() || relative.generic_string().starts_with("..")) {
             throw std::invalid_argument("media path is outside configured media root");
         }
     }
@@ -333,9 +338,14 @@ std::vector<std::uint8_t> acquire_bytes(const Source& source, const Policy& poli
     if (source.value.empty()) { throw std::invalid_argument("media source is empty"); }
 
     if (source.kind == SourceKind::Url) {
+#if !NINFER_HAVE_CURL
+        throw Error(ErrorKind::RemoteUnavailable,
+                    "remote media URLs are not supported in this build (compiled without libcurl)");
+#else
         std::vector<std::uint8_t> bytes = fetch_url(source.value, policy);
         if (bytes.empty()) { throw std::invalid_argument("media source contains no data"); }
         return bytes;
+#endif
     }
     if (source.kind == SourceKind::Data) {
         const std::size_t comma = source.value.find(',');

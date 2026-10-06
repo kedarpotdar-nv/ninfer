@@ -21,7 +21,7 @@ void launch_q8_a16_grouped_sliced_k_mma(const Q8LinearOperands& operands, Output
     for_each_token_slice(operands.tokens, Schedule::kBlockTokens, [&](int offset, int count) {
         const dim3 grid(div_up(operands.rows, 16), div_up(count, Schedule::kBlockTokens));
         const auto launch = [&]<bool Full>() {
-            constexpr auto kernel =
+            static constexpr auto kernel =
                 q8_a16_grouped_sliced_k_mma_kernel<Schedule, Full, Output, Epilogue>;
             const int shared = q8_prepare_shared<Schedule::kSharedBytes, kernel>();
             kernel<<<grid, Schedule::kThreads, shared, stream>>>(operands, output, epilogue, offset,

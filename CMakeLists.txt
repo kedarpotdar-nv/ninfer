@@ -39,6 +39,15 @@ if(NINFER_BUILD_APPS OR BUILD_TESTING)
   set(NINFER_BUILD_PRODUCT_SUPPORT ON)
 endif()
 
+if(MSVC)
+  # Large CUDA translation units, UTF-8 sources, and no min/max macros from <windows.h>.
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/bigobj> $<$<COMPILE_LANGUAGE:CXX>:/utf-8>
+                      $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus> $<$<COMPILE_LANGUAGE:CXX>:/EHsc>
+                      $<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>
+                      $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,/utf-8,/Zc:__cplusplus,/EHsc,/Zc:preprocessor>)
+  add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS)
+endif()
+
 include(cmake/Dependencies.cmake)
 include(cmake/NinferTargets.cmake)
 

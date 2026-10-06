@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/wide_math.h"
+
 #include "runtime/contract/request.h"
 #include "core/transfer_work.h"
 #include <cstddef>
@@ -51,15 +53,14 @@ struct PrefillWork {
     result.tokens                       = suffix_tokens;
     result.vision_items                 = vision_items;
     result.vision_patches               = vision_patches;
-    const unsigned __int128 suffix      = suffix_tokens;
-    const unsigned __int128 linear      = static_cast<unsigned __int128>(prefix_tokens) * suffix;
-    const unsigned __int128 triangular  = suffix * (suffix + 1U) / 2U;
-    constexpr unsigned __int128 maximum = ~static_cast<unsigned __int128>(0);
-    const unsigned __int128 attention =
-        triangular > maximum - linear ? maximum : linear + triangular;
-    result.attention_pairs = attention > std::numeric_limits<std::uint64_t>::max()
-                                 ? std::numeric_limits<std::uint64_t>::max()
-                                 : static_cast<std::uint64_t>(attention);
+    // Saturating 64-bit evaluation of prefix*suffix + suffix*(suffix+1)/2. Saturation is
+    // monotone, so saturating each term gives the same result as saturating the exact sum.
+    const std::uint64_t suffix = suffix_tokens;
+    const std::uint64_t linear = wide::saturating_mul(prefix_tokens, suffix);
+    const std::uint64_t triangular =
+        suffix % 2U == 0 ? wide::saturating_mul(suffix / 2U, suffix + 1U)
+                         : wide::saturating_mul(suffix, suffix / 2U + 1U);
+    result.attention_pairs = wide::saturating_add(linear, triangular);
     return result;
 }
 

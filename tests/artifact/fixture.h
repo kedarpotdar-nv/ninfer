@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <random>
 #include <fstream>
 #include <span>
 #include <stdexcept>
@@ -46,12 +47,19 @@ struct Fixture {
     std::vector<std::byte> payload;
 
     Fixture() : payload(1344) {
-        auto pattern = (std::filesystem::temp_directory_path() / "ninfer-artifact-XXXXXX").string();
-        std::vector<char> buffer(pattern.begin(), pattern.end());
-        buffer.push_back('\0');
-        const char* path = ::mkdtemp(buffer.data());
-        if (!path) { throw std::runtime_error("cannot create fixture directory"); }
-        directory = path;
+        // Portable mkdtemp: a random suffix under the temp directory, retried on collision.
+        std::random_device seed;
+        std::mt19937_64 rng(seed());
+        for (int attempt = 0;; ++attempt) {
+            const auto candidate = std::filesystem::temp_directory_path() /
+                                   ("ninfer-artifact-" + std::to_string(rng() & 0xffffffU));
+            std::error_code error;
+            if (std::filesystem::create_directory(candidate, error) && !error) {
+                directory = candidate;
+                break;
+            }
+            if (attempt > 16) { throw std::runtime_error("cannot create fixture directory"); }
+        }
         entry     = directory / "model.ninfer";
         root      = {
             {"components",

@@ -1,3 +1,4 @@
+#include "core/wide_math.h"
 #include "serve/serve_options.h"
 #include "product/speculative_options.h"
 
@@ -75,17 +76,28 @@ std::size_t parse_host_context_mib(const char* text) {
     if (fraction.size() > 20) {
         throw std::invalid_argument("--host-context-mib must resolve to a whole number of bytes");
     }
-    unsigned __int128 numerator = 0;
-    unsigned __int128 divisor   = 1;
+    // numerator holds up to 20 decimal digits (needs 67 bits); scale by 2^20 and divide by 10^k
+    // exactly in 128-bit arithmetic.
+    wide::Uint128 numerator;
+    wide::Uint128 divisor = wide::add_small({}, 1U);
     for (const char character : fraction) {
-        numerator = numerator * 10 + static_cast<unsigned int>(character - '0');
-        divisor *= 10;
+        numerator = wide::add_small(wide::mul_small(numerator, 10U), static_cast<unsigned int>(character - '0'));
+        divisor   = wide::mul_small(divisor, 10U);
     }
-    numerator *= bytes_per_mib;
-    if (numerator % divisor != 0) {
+    numerator = wide::shift_left(numerator, 20U); // bytes_per_mib == 2^20
+    static_assert(bytes_per_mib == (std::size_t{1} << 20U));
+    // 10^20 does not fit 64 bits; divide by 2^k and 5^k in two steps (both exact).
+    const unsigned k = static_cast<unsigned>(fraction.size());
+    std::uint64_t five_power = 1;
+    for (unsigned i = 0; i < k; ++i) { five_power *= 5U; }
+    const wide::Uint128 by_two      = wide::shift_right(numerator, k);
+    const bool two_exact            = wide::shift_left(by_two, k) == numerator;
+    const wide::DivisionResult parts = wide::divide(by_two, five_power);
+    if (!two_exact || parts.remainder != 0 || parts.quotient.hi != 0) {
         throw std::invalid_argument("--host-context-mib must resolve to a whole number of bytes");
     }
-    const std::size_t fractional_bytes = static_cast<std::size_t>(numerator / divisor);
+    (void)divisor;
+    const std::size_t fractional_bytes = static_cast<std::size_t>(parts.quotient.lo);
     const std::size_t whole_bytes      = whole_mib * bytes_per_mib;
     if (fractional_bytes > maximum - whole_bytes) {
         throw std::invalid_argument("--host-context-mib is out of range");

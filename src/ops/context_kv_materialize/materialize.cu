@@ -388,7 +388,7 @@ void launch_grouped(const Tensor& x, const Tensor& positions, const Tensor& coun
                     const Tensor& slots, DeviceLayers layers,
                     ContextKVMaterializeExecutionEnvelope envelope, const Tensor& scratch,
                     cudaStream_t stream) {
-    constexpr auto kernel = context_kv_grouped_kernel<Columns, KWarps>;
+    static constexpr auto kernel = context_kv_grouped_kernel<Columns, KWarps>;
     const int shared = q8_prepare_shared<GroupedSchedule<Columns, KWarps>::kSharedBytes, kernel>();
     kernel<<<dim3(64, (envelope.max_count * x.ne[2] + Columns - 1) / Columns, 10), KWarps * 32,
              shared, stream>>>(

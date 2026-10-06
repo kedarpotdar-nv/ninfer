@@ -27,7 +27,7 @@ void launch_q8_a16_sliced_k_mma(const Q8LinearOperands& operands, Output output,
         const dim3 grid(div_up(operands.rows / ratio, RowPolicy::kOutputRowsPerCta),
                         div_up(count, Schedule::kTokenCapacity));
         const auto launch = [&]<bool Full>() {
-            constexpr auto kernel =
+            static constexpr auto kernel =
                 q8_a16_sliced_k_mma_kernel<Schedule, Full, Output, Epilogue, RowPolicy>;
             const int shared = q8_prepare_shared<Schedule::kSharedBytes, kernel>();
             if (pdl::enabled()) {

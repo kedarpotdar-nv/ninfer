@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/wide_math.h"
 #include "runtime/contract/resources.h"
 #include "runtime/engine/context_cache/context_cost.h"
 #include "runtime/engine/context_cache/prefix_index.h"
@@ -1011,9 +1012,8 @@ private:
             return left.priority.last_demand < right.priority.last_demand;
         }
         if (!left.priority.reused) {
-            const auto a = static_cast<unsigned __int128>(left.loss) * right.units;
-            const auto b = static_cast<unsigned __int128>(right.loss) * left.units;
-            if (a != b) { return a < b; }
+            const int order = wide::compare_products(left.loss, right.units, right.loss, left.units);
+            if (order != 0) { return order < 0; }
         }
         return left.order < right.order;
     }

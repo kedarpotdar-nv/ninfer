@@ -21,7 +21,7 @@ void launch_bf16_a16_gemv(const Bf16A16Operands& p, Output output, Epilogue epil
     if constexpr (requires { Epilogue::kRowTokens; }) {
         static_assert(Epilogue::kRowTokens == 1, "BF16 GEMV row consumers require one token");
     }
-    constexpr auto kernel = bf16_a16_gemv_kernel<Schedule, Output, Epilogue>;
+    static constexpr auto kernel = bf16_a16_gemv_kernel<Schedule, Output, Epilogue>;
     int bytes             = 0;
     if constexpr (Schedule::kActivationAccess == Bf16ActivationAccess::Shared) {
         constexpr int static_bytes = sizeof(Bf16GemvSharedStorage<Schedule>);
@@ -77,7 +77,7 @@ void launch_bf16_mma_partitions(const Bf16A16Operands& p, Output output, Epilogu
             throw std::invalid_argument("BF16 MMA grid exceeds CUDA grid.x capacity");
         const dim3 grid(static_cast<unsigned>(blocks), 1, Splits);
         const auto launch = [&]<bool Full>() {
-            constexpr auto kernel = bf16_a16_mma_kernel<Schedule, Full, Output, Epilogue, Splits>;
+            static constexpr auto kernel = bf16_a16_mma_kernel<Schedule, Full, Output, Epilogue, Splits>;
             const int bytes =
                 bf16_prepare_shared<bf16_mma_shared_bytes<Schedule, Epilogue>, kernel>();
             kernel<<<grid, Schedule::kThreads, bytes, stream>>>(p.x, p.weight, output, epilogue,
@@ -103,7 +103,7 @@ void launch_bf16_a16_sliced_k_mma(const Bf16A16Operands& p, Output output, Epilo
     validate_bf16_operands<Schedule>(p);
     if (p.rows % Schedule::kBlockRows || p.k % Schedule::kBlockK)
         throw std::invalid_argument("BF16 sliced-K requires complete row/K tiles");
-    constexpr auto kernel = bf16_a16_sliced_k_mma_kernel<Schedule, Output, Epilogue>;
+    static constexpr auto kernel = bf16_a16_sliced_k_mma_kernel<Schedule, Output, Epilogue>;
     const int bytes       = bf16_prepare_shared<Schedule::kSharedBytes, kernel>();
     for_each_token_slice(p.tokens, Schedule::kBlockTokens, [&](int offset, int count) {
         const dim3 grid(p.rows / Schedule::kBlockRows, div_up(count, Schedule::kBlockTokens));

@@ -28,7 +28,7 @@ void launch_quantize_exact(const Tensor& x, const Weight& weight, Nvfp4A4Workspa
     const std::int32_t tasks = written_tokens * ActivationGeometry::kGroupsPerRow;
     const int blocks         = (tasks + kThreads - 1) / kThreads;
     const auto launch        = [&]<Nvfp4ScaleLayout Layout>() {
-        constexpr auto kernel = nvfp4_a4_quantize_kernel<ActivationGeometry, kThreads, Layout>;
+        static constexpr auto kernel = nvfp4_a4_quantize_kernel<ActivationGeometry, kThreads, Layout>;
         if (pdl::enabled()) {
             CUDA_CHECK(pdl::launch_dependent({dim3(blocks), dim3(kThreads), 0, stream}, kernel,
                                                     input, workspace.codes, workspace.scales, tokens,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ops/common/tma_param.cuh"
 #include "ops/common/mbarrier.cuh"
 #include "ops/common/memory.cuh"
 #include "ops/common/mma.cuh"
@@ -21,11 +22,12 @@
 
 namespace ninfer::ops::detail {
 
-struct alignas(128) Nvfp4A4TmaDescriptors {
-    CUtensorMap a_codes;
-    CUtensorMap b_codes;
-    CUtensorMap a_scales;
-    CUtensorMap b_scales;
+// Kernel parameter: TmaMapParam carries each CUtensorMap at 64-byte alignment (see tma_param.cuh).
+struct alignas(64) Nvfp4A4TmaDescriptors {
+    TmaMapParam a_codes;
+    TmaMapParam b_codes;
+    TmaMapParam a_scales;
+    TmaMapParam b_scales;
 };
 
 inline void nvfp4_check_driver(CUresult status, const char* operation) {
@@ -196,14 +198,14 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void nvfp4_a4_t
                                                           : kTransactionBytes - kScaleBytes);
 
                 auto& tensors = shared.scratch.tensors;
-                nvfp4_tma_load_2d(tensors.a_codes[stage], &descriptors.a_codes,
+                nvfp4_tma_load_2d(tensors.a_codes[stage], descriptors.a_codes.map(),
                                   k_tile * Schedule::kCodeRowBytes, token_begin,
                                   &shared.full[stage]);
 #pragma unroll
                 for (int branch = 0; branch < branches; ++branch)
                     nvfp4_tma_load_2d(tensors.b_codes[stage] +
                                           branch * loaded_rows * Schedule::kCodeRowBytes,
-                                      &descriptors.b_codes, k_tile * Schedule::kCodeRowBytes,
+                                      descriptors.b_codes.map(), k_tile * Schedule::kCodeRowBytes,
                                       row_begin + branch * (output_rows / 2), &shared.full[stage]);
                 if (load_scales) {
                     // The box is tile-contiguous, so its address is a tile index rather than a
@@ -212,7 +214,7 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void nvfp4_a4_t
                     const int scale_tile =
                         (token_begin / Schedule::kBlockTokens) * kScaleTilesPerPlane + k_tile / 2;
                     nvfp4_tma_load_2d(tensors.a_scale4[(k_tile / 2) % Schedule::kScaleSlots],
-                                      &descriptors.a_scales, 0, scale_tile * 16,
+                                      descriptors.a_scales.map(), 0, scale_tile * 16,
                                       &shared.full[stage]);
                 }
 #pragma unroll
@@ -221,7 +223,7 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void nvfp4_a4_t
                         (((row_begin + branch * (output_rows / 2)) / 128) * (K / 64) +
                          k_tile * Schedule::kK64PerStage) *
                         32;
-                    nvfp4_tma_load_2d(tensors.b_scales[stage][branch], &descriptors.b_scales, 0,
+                    nvfp4_tma_load_2d(tensors.b_scales[stage][branch], descriptors.b_scales.map(), 0,
                                       scale_row, &shared.full[stage]);
                 }
             }
@@ -392,7 +394,7 @@ void launch_nvfp4_a4_tma_mma(const Nvfp4A4Operands& p, Output output, Epilogue e
         throw std::invalid_argument("NVFP4 TMA operands require 16-byte alignment");
     const auto descriptors = make_nvfp4_a4_tma_descriptors<Schedule, Rows>(p);
     constexpr int bytes    = sizeof(Nvfp4A4TmaSharedStorage<Schedule, Rows, Epilogue>);
-    constexpr auto kernel  = nvfp4_a4_tma_kernel<Schedule, Epilogue, Output, Rows>;
+    static constexpr auto kernel = nvfp4_a4_tma_kernel<Schedule, Epilogue, Output, Rows>;
     (void)nvfp4_prepare_shared<bytes, kernel, true>();
     for_each_token_slice(p.tokens, Schedule::kBlockTokens, [&](int offset, int count) {
         const dim3 grid(p.rows / Schedule::kBlockRows, div_up(count, Schedule::kBlockTokens));

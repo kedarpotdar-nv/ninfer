@@ -11,12 +11,20 @@
 
 namespace {
 
-using AlignedBacking = std::unique_ptr<void, decltype(&std::free)>;
+#if defined(_WIN32)
+void release_backing(void* data) noexcept { _aligned_free(data); }
+void* allocate_backing(std::size_t bytes) { return _aligned_malloc(bytes, 256); }
+#else
+void release_backing(void* data) noexcept { std::free(data); }
+void* allocate_backing(std::size_t bytes) { return std::aligned_alloc(256, bytes); }
+#endif
+
+using AlignedBacking = std::unique_ptr<void, decltype(&release_backing)>;
 
 AlignedBacking make_backing(std::size_t bytes) {
-    void* data = std::aligned_alloc(256, bytes);
+    void* data = allocate_backing(bytes);
     if (data == nullptr) { throw std::bad_alloc(); }
-    return AlignedBacking(data, &std::free);
+    return AlignedBacking(data, &release_backing);
 }
 
 int fail(const char* label) {

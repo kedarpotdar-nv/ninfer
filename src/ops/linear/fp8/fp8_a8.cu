@@ -74,7 +74,7 @@ __global__ __launch_bounds__(Threads,
 template <class ActivationGeometry>
 void launch_quantize_exact(const Tensor& x, Fp8A8Workspace workspace, cudaStream_t stream) {
     constexpr int kThreads = 256;
-    constexpr auto kernel  = fp8_a8_quantize_kernel<ActivationGeometry, kThreads>;
+    static constexpr auto kernel = fp8_a8_quantize_kernel<ActivationGeometry, kThreads>;
     if (pdl::enabled()) {
         CUDA_CHECK(pdl::launch_dependent(
             {dim3(static_cast<unsigned>(x.ne[1])), dim3(kThreads), 0, stream}, kernel,

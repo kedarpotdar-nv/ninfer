@@ -11,7 +11,13 @@
 #include <stdexcept>
 #include <string>
 
-#include <unistd.h>
+#if defined(_WIN32)
+#    include <process.h>
+#    define NINFER_GETPID _getpid
+#else
+#    include <unistd.h>
+#    define NINFER_GETPID getpid
+#endif
 
 namespace {
 
@@ -192,7 +198,7 @@ void test_schema_validation() {
 void test_resolution_and_atomic_upserts() {
     const std::filesystem::path directory =
         std::filesystem::temp_directory_path() /
-        ("ninfer-context-cost-test-" + std::to_string(static_cast<long long>(::getpid())));
+        ("ninfer-context-cost-test-" + std::to_string(static_cast<long long>(NINFER_GETPID())));
     std::filesystem::create_directories(directory);
     const std::filesystem::path path = directory / "presets.json";
     try {

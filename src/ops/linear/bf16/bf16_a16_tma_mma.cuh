@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ops/common/tma_param.cuh"
 #include "ops/common/mbarrier.cuh"
 #include "ops/linear/bf16/bf16_mma_common.cuh"
 #include "ops/linear/bf16/bf16_operands.h"
@@ -11,9 +12,10 @@
 
 namespace ninfer::ops::detail {
 
-struct alignas(128) Bf16TmaDescriptors {
-    CUtensorMap weight;
-    CUtensorMap activation;
+// Kernel parameter: TmaMapParam carries each CUtensorMap at 64-byte alignment (see tma_param.cuh).
+struct alignas(64) Bf16TmaDescriptors {
+    TmaMapParam weight;
+    TmaMapParam activation;
 };
 
 inline CUtensorMap bf16_tma_map(const __nv_bfloat16* pointer, int rows, int k, int block_rows,
@@ -100,9 +102,9 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void bf16_a16_t
                 const int stage = kt % S;
                 cta_mbarrier_wait(empty + stage, 1U ^ ((kt / S) & 1U));
                 cta_mbarrier_arrive_expect_tx(full + stage, (BR + BT) * BK * 2);
-                bf16_tma_load(a + stage * BR * BK, &descriptors.weight, kt * (BK / 64), row_begin,
+                bf16_tma_load(a + stage * BR * BK, descriptors.weight.map(), kt * (BK / 64), row_begin,
                               full + stage);
-                bf16_tma_load(b + stage * BT * BK, &descriptors.activation, kt * (BK / 64),
+                bf16_tma_load(b + stage * BT * BK, descriptors.activation.map(), kt * (BK / 64),
                               token_begin, full + stage);
             }
         }
@@ -135,7 +137,7 @@ void launch_bf16_a16_tma_mma(const Bf16A16Operands& p, Output output, Epilogue e
         if (blocks > 2147483647LL)
             throw std::invalid_argument("BF16 TMA grid exceeds CUDA grid.x capacity");
         const auto launch = [&]<bool Full>() {
-            constexpr auto kernel = bf16_a16_tma_mma_kernel<Schedule, Full, Output, Epilogue>;
+            static constexpr auto kernel = bf16_a16_tma_mma_kernel<Schedule, Full, Output, Epilogue>;
             constexpr int bytes =
                 bf16_tma_scratch_bytes<Schedule, Epilogue> + Schedule::kBarrierBytes;
             bf16_prepare_shared<bytes, kernel>();

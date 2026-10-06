@@ -2,7 +2,7 @@ add_library(ninfer_artifact STATIC
   schema.cpp
   formats.cpp
   layouts.cpp
-  file_io.cpp
+  $<IF:$<BOOL:${WIN32}>,file_io_windows.cpp,file_io.cpp>
   reader.cpp
   binder.cpp
   materializer.cpp

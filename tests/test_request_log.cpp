@@ -13,7 +13,13 @@
 #include <string>
 #include <vector>
 
-#include <unistd.h>
+#if defined(_WIN32)
+#    include <process.h>
+#    define NINFER_GETPID _getpid
+#else
+#    include <unistd.h>
+#    define NINFER_GETPID getpid
+#endif
 
 namespace {
 
@@ -830,7 +836,7 @@ int main() {
 
     const std::filesystem::path log_path =
         std::filesystem::temp_directory_path() /
-        ("ninfer-request-log-test-" + std::to_string(static_cast<long long>(::getpid())) +
+        ("ninfer-request-log-test-" + std::to_string(static_cast<long long>(NINFER_GETPID())) +
          ".jsonl");
     std::filesystem::remove(log_path);
     {
