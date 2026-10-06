@@ -10,6 +10,8 @@ ninfer_add_test(ninfer_qwen3_5_frontend_test
   SOURCES "${CMAKE_CURRENT_LIST_DIR}/test_frontend.cpp"
   NEEDS_SOURCE_DIR
   LIBRARIES ninfer_engine ninfer_core ninfer::json)
+target_compile_definitions(ninfer_qwen3_5_frontend_test PRIVATE
+  NINFER_TEST_HAVE_FFMPEG=$<BOOL:${NINFER_ENABLE_FFMPEG}>) # media sub-tests need a real decoder
 
 ninfer_add_test(ninfer_qwen3_5_runtime_mechanisms_test
   SOURCES "${CMAKE_CURRENT_LIST_DIR}/test_runtime_mechanisms.cpp"

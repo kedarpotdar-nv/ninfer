@@ -44,7 +44,13 @@ tokens). Native Windows decodes about 1% slower than the WSL build of the same s
 path does not remove the per-round host launch cost that WSL pays. Engine load from NTFS: 7.9 s for 19.3 GiB of
 weights with the file in the OS cache.
 
-CTest on Windows: see the line recorded at the end of this file.
+CTest on Windows: see "Test results" at the end of this file. Two Windows-only findings while getting there:
+
+- CTest 4.3 on Windows leaks an `ENVIRONMENT "VAR="` (empty value) setting into every later test in the same
+  run, because Windows cannot hold an empty-valued environment variable and CTest's restore leaves a stale entry
+  in its own process. The device-sync "empty" test is therefore Linux-only.
+- A Windows clone with `core.autocrlf=true` checked out the `.jinja` template fixtures with CRLF, which the frontend
+  test's renderer rejects. `.gitattributes` now pins LF for all text files (CRLF only for `.bat`/`.ps1`).
 
 ## What the port changes
 

@@ -9,6 +9,7 @@
 #include "models/qwen3_5/frontend/tokenizer.h"
 #include "text/unicode.h"
 
+#include <exception>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -30,6 +31,10 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+#ifndef NINFER_TEST_HAVE_FFMPEG
+#    define NINFER_TEST_HAVE_FFMPEG 1
+#endif
 
 namespace {
 
@@ -2470,6 +2475,15 @@ int test_media_preparation_cancellation() {
 } // namespace
 
 int main() {
+    // Name an escaping exception instead of dying silently (MSVC fast-fails on std::terminate).
+    std::set_terminate([] {
+        try {
+            if (auto current = std::current_exception()) { std::rethrow_exception(current); }
+        } catch (const std::exception& error) {
+            std::cerr << "uncaught exception: " << error.what() << '\n';
+        } catch (...) { std::cerr << "uncaught non-standard exception\n"; }
+        std::abort();
+    });
     const FrontendResources owned = resources();
     const Frontend frontend       = make_frontend(owned);
     int failures                  = 0;
@@ -2490,19 +2504,23 @@ int main() {
     failures += test_official_resource_guards();
     failures += test_template_file_execution();
     failures += test_invalid_public_part_enums(frontend);
+#if NINFER_TEST_HAVE_FFMPEG
     failures += test_text_and_image_prepare(frontend);
     failures += test_media_token_ids_come_from_tokenizer();
     failures += test_template_media_contract();
     failures += test_image_resize_rejection_policy();
+#endif
     failures += test_explicit_leading_instruction_cache_boundary();
     failures += test_trimmed_source_cache_boundaries();
     failures += test_source_part_recovery_boundary();
     failures += test_input_recovery_requires_proven_closing();
     failures += test_automatic_message_boundary_fallback();
+#if NINFER_TEST_HAVE_FFMPEG
     failures += test_media_admission_uses_aggregate_resources(frontend);
     failures += test_multimodal_prompt_over_removed_32k_cap(frontend);
     failures += test_attention_pairs_are_diagnostic(frontend);
     failures += test_video_prepare(frontend);
+#endif
     failures += test_cross_round_stop(frontend);
     failures += test_same_token_stop_priority(frontend);
     failures += test_terminal_flush(frontend);
@@ -2510,6 +2528,7 @@ int main() {
     failures += test_reasoning_split(frontend);
     failures += test_thinking_budget_control(frontend);
     failures += test_utf8_and_hidden_eos(frontend);
+#if NINFER_TEST_HAVE_FFMPEG
     failures += test_media_cache_reuses_immutable_payload();
     failures += test_media_payload_outlives_frontend_cache();
     failures += test_media_live_bytes_follow_last_payload_reference();
@@ -2517,6 +2536,7 @@ int main() {
     failures += test_media_cache_runs_independent_misses_in_parallel();
     failures += test_many_images_prepare_in_one_parallel_batch();
     failures += test_media_preparation_cancellation();
+#endif
     failures += test_invalid_media_classification();
     failures += test_disabled_vision();
     return failures == 0 ? 0 : 1;
