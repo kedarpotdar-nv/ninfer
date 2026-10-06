@@ -24,9 +24,7 @@ Nvfp4LinearAddRoute resolve_route(std::int32_t output_rows, std::int32_t input_r
         return Nvfp4LinearAddRoute::A16;
     }
     if (!allows_a4(policy)) { throw std::invalid_argument("nvfp4 linear_add: unsupported policy"); }
-    // Both profiles take the A4 MMA tile from the eight-token verification block; K=6144 used the
-    // A16 route through T=16 before the output-projection NVFP4 experiment.
-    constexpr std::int32_t first_a4 = 8;
+    const std::int32_t first_a4 = input_rows == 6144 ? 17 : 8;
     return tokens >= first_a4 ? Nvfp4LinearAddRoute::A4 : Nvfp4LinearAddRoute::A16;
 }
 
