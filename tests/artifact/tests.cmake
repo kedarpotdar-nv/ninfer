@@ -2,6 +2,7 @@ ninfer_add_test(ninfer_artifact_reader_test
   SOURCES "${CMAKE_CURRENT_LIST_DIR}/test_reader.cpp"
   LIBRARIES ninfer_artifact)
 
+if(NOT WIN32) # fault injection relies on GNU ld --wrap
 ninfer_add_test(ninfer_artifact_materialization_test
   SOURCES "${CMAKE_CURRENT_LIST_DIR}/test_materialization.cpp" "${CMAKE_CURRENT_LIST_DIR}/materialization_cuda_errors.cpp"
   LIBRARIES ninfer_artifact)
@@ -27,3 +28,4 @@ set_tests_properties(
 set_tests_properties(
   ninfer_artifact_materialization_test
   PROPERTIES SKIP_RETURN_CODE 77)
+endif()

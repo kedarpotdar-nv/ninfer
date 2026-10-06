@@ -1,4 +1,8 @@
-# Preserve repository-pinned upstream sources byte-for-byte; NInfer-owned files retain Git's
-# default whitespace checks.
-/third_party/spdlog/include/** -whitespace
-/third_party/spdlog/src/** -whitespace
+# Keep LF everywhere: template fixtures, Python tests and shell scripts are read verbatim at runtime,
+# and a CRLF checkout breaks them on Windows (core.autocrlf=true clones).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.ninfer binary
+*.png binary
+*.gguf binary

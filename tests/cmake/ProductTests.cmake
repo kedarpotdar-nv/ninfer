@@ -1,6 +1,8 @@
+if(NINFER_ENABLE_FFMPEG) # the stub build rejects every decode request
 ninfer_add_test(ninfer_media_decode_test
   SOURCES "${CMAKE_CURRENT_LIST_DIR}/../test_media_decode.cpp"
   LIBRARIES ninfer_media_decode)
+endif()
 
 ninfer_add_test(ninfer_prompt_input_test
   SOURCES "${CMAKE_CURRENT_LIST_DIR}/../test_prompt_input.cpp"

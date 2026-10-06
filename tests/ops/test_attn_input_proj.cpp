@@ -7,6 +7,7 @@
 #include "ops/direct_bf16_weight.h"
 #include "ops/input_projection_test_common.h"
 
+#include <array>
 #include <cuda_runtime.h>
 
 #include <algorithm>
@@ -52,8 +53,8 @@ int verify_output(std::string_view label, const GuardedBf16Tensor& output,
 }
 
 WeightParent physical_parent(const Weight& weight) {
-    const std::array shape{static_cast<std::uint64_t>(weight.n),
-                           static_cast<std::uint64_t>(weight.k)};
+    const std::array<std::uint64_t, 2> shape{static_cast<std::uint64_t>(weight.n),
+                                             static_cast<std::uint64_t>(weight.k)};
     return {weight_geometry(weight.qtype, weight.layout, shape),
             static_cast<const std::byte*>(weight.payload), weight.weight_scale_divisor};
 }

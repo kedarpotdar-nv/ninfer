@@ -255,6 +255,7 @@ class ChatTemplates(unittest.TestCase):
         result = subprocess.run(
             [str(RENDERER), "--render"],
             text=True,
+            encoding="utf-8",  # the renderer exchanges UTF-8; Windows defaults to the ANSI code page
             capture_output=True,
             check=True,
             input="".join(

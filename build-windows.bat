@@ -23,6 +23,6 @@ if "%MODE%"=="configure" exit /b 0
 cmake --build build-win --target ninfer-serve --parallel 8 -- -k 0 || exit /b 1
 if "%MODE%"=="build" exit /b 0
 :test
-cmake --build build-win --parallel 8 || exit /b 1
+cmake --build build-win --parallel 8 -- -k 0 || exit /b 1
 ctest --test-dir build-win --output-on-failure -j1
 exit /b %errorlevel%

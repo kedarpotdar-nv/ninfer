@@ -1,0 +1,60 @@
+{
+  "benchmark": "SPEED-Bench throughput_8k, 15 requests, 256 output tokens, concurrency 1",
+  "date_utc": "2026-10-06",
+  "machine": "RTX 5090, driver 591.86, Windows 11; WSL build: CUDA 13.4.2 + GCC; native: MSVC 14.41 + CUDA 13.4.59",
+  "artifact": "qwen3_8_27b_gdn4_a4_draftq4.ninfer (sha256 f54becd5...), byte-exact NTFS copy for the native server",
+  "rounds": [
+    {
+      "arm": "wsl-head-r1",
+      "decode_tokens_per_second": 250.66,
+      "per_category": {
+        "high_entropy": 214.08,
+        "mixed": 304.2,
+        "low_entropy": 233.7
+      },
+      "accepted": 2736,
+      "draft_n": 7486,
+      "completion_tokens": 3840,
+      "source": "results\\20261006T224020Z-wsl-head-r1-throughput8k.json"
+    },
+    {
+      "arm": "native-win-r1",
+      "decode_tokens_per_second": 247.06,
+      "per_category": {
+        "high_entropy": 214.66,
+        "mixed": 299.4,
+        "low_entropy": 227.12
+      },
+      "accepted": 2736,
+      "draft_n": 7486,
+      "completion_tokens": 3840,
+      "source": "results\\20261006T224055Z-native-win-r1-throughput8k.json"
+    },
+    {
+      "arm": "wsl-head-r2",
+      "decode_tokens_per_second": 250.94,
+      "per_category": {
+        "high_entropy": 214.02,
+        "mixed": 304.49,
+        "low_entropy": 234.31
+      },
+      "accepted": 2736,
+      "draft_n": 7486,
+      "completion_tokens": 3840,
+      "source": "results\\20261006T224139Z-wsl-head-r2-throughput8k.json"
+    },
+    {
+      "arm": "native-win-r2",
+      "decode_tokens_per_second": 248.46,
+      "per_category": {
+        "high_entropy": 214.39,
+        "mixed": 300.09,
+        "low_entropy": 230.9
+      },
+      "accepted": 2736,
+      "draft_n": 7486,
+      "completion_tokens": 3840,
+      "source": "results\\20261006T224214Z-native-win-r2-throughput8k.json"
+    }
+  ]
+}
