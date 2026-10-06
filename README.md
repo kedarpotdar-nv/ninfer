@@ -11,6 +11,14 @@ RTX 5090 (GB202, 32 GB), driver 591.86, Ubuntu WSL2 on Windows 11, CUDA 13.4.2, 
 DFlash2 with seven draft tokens, BF16 KV, greedy, 256 output tokens, thinking enabled. Decode rates are the server's
 `timings.predicted_per_second`, arithmetic mean over requests, from alternating paired runs.
 
+Provenance of the numbers: all measurements below were taken with the branch as of the `--agent-prompt-cache`
+commit, before `ops(linear_add): keep upstream's K=6144 NVFP4 A4 threshold`. That later commit restores upstream's
+route selection for NVFP4 `linear_add` weights with K=6144; the selected artifact (and the public one) contains no
+such weight (its 64 K=6144 output projections are FP8, `AllowA8`; NVFP4 tensors are at K=5120 and K=17408 only), so
+the code path never executed during these runs and the current head reproduces them unchanged. A confirmation run of
+`throughput_8k` on the current head is recorded in `speed-bench-category-decode.json` under `head_confirmation` when
+present.
+
 | Workload | llama.cpp b11425, Q4_K_M weights + Q4_K_M DFlash2 draft | Public NInfer `68c5435`, public artifact (NVFP4 MLP, FP8 elsewhere) | This fork, re-quantized artifact (public + GDN projections NVFP4/A4 + draft FFN Q4) |
 | --- | ---: | ---: | ---: |
 | SPEED-Bench `throughput_8k`, 15 requests (~8K-token prompts) | 156.4 tok/s | 221.9 | **241.9** (+9.0% vs NInfer, +54.6% vs llama.cpp) |
