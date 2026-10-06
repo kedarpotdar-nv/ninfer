@@ -126,5 +126,67 @@
         "ninfer-build-draftq4-pdl1-bf16": 271.5420779711426
       }
     }
+  },
+  "head_confirmation": {
+    "sweep": "results/20261006T193732Z-engine-sweep",
+    "date_utc": "2026-10-06",
+    "dataset": "throughput_8k",
+    "note": "Same-session paired run on the pushed head, taken the day after the headline measurements; compare ratios within a session, not absolute rates across days.",
+    "requests_per_category": {
+      "high_entropy": 5,
+      "mixed": 5,
+      "low_entropy": 5
+    },
+    "repeats": {
+      "ninfer-public-bf16": 2,
+      "ninfer-build-public-bf16": 2,
+      "ninfer-build-draftq4-bf16": 2
+    },
+    "labels": {
+      "ninfer-public-bf16": "Public NInfer 68c5435 binary, public artifact",
+      "ninfer-build-public-bf16": "Fork head (8024eb7 tree, after the K=6144 threshold revert), public artifact: engine-only",
+      "ninfer-build-draftq4-bf16": "Fork head, re-quantized artifact: head confirmation"
+    },
+    "decode_tokens_per_second": {
+      "high_entropy": {
+        "ninfer-public-bf16": 196.25354057352433,
+        "ninfer-build-public-bf16": 208.4887457136519,
+        "ninfer-build-draftq4-bf16": 210.37064589403423
+      },
+      "low_entropy": {
+        "ninfer-public-bf16": 214.22168567702266,
+        "ninfer-build-public-bf16": 227.17232793911296,
+        "ninfer-build-draftq4-bf16": 245.37001542271852
+      },
+      "mixed": {
+        "ninfer-public-bf16": 262.713048458137,
+        "ninfer-build-public-bf16": 279.02864795611174,
+        "ninfer-build-draftq4-bf16": 300.05891525089555
+      },
+      "overall": {
+        "ninfer-public-bf16": 224.39609156956135,
+        "ninfer-build-public-bf16": 238.22990720295886,
+        "ninfer-build-draftq4-bf16": 251.9331921892161
+      }
+    },
+    "paired_vs_public": {
+      "engine_only": {
+        "speedup": 1.0616,
+        "delta_tokens_s": 13.8,
+        "ci95_delta": [
+          6.5,
+          21.2
+        ],
+        "responses_identical_to_public": "15/15"
+      },
+      "full_fork": {
+        "speedup": 1.1227,
+        "delta_tokens_s": 27.5,
+        "ci95_delta": [
+          12.2,
+          42.8
+        ]
+      }
+    }
   }
 }

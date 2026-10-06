@@ -1,0 +1,122 @@
+{
+  "campaign": "C:\\Users\\kedar\\Documents\\qwen38-27b-megakernel\\results\\20261006T193732Z-engine-sweep",
+  "reference": "ninfer-public-bf16",
+  "variants": {
+    "ninfer-public-bf16": {
+      "decode_tokens_s_runs": [
+        225.30705364482475,
+        223.48512949429792
+      ],
+      "decode_tokens_s_mean": 224.39609156956135,
+      "decode_tokens_s_stdev": 1.2882949216450588,
+      "latency_s_mean": 1.8239241466585856,
+      "accepted_and_drafted": [
+        [
+          2792,
+          7136
+        ],
+        [
+          2792,
+          7136
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        15,
+        15
+      ],
+      "requests": 15
+    },
+    "ninfer-build-public-bf16": {
+      "decode_tokens_s_runs": [
+        239.7214062167384,
+        236.73840818917938
+      ],
+      "decode_tokens_s_mean": 238.22990720295888,
+      "decode_tokens_s_stdev": 2.109298133553069,
+      "latency_s_mean": 1.7615842333335119,
+      "accepted_and_drafted": [
+        [
+          2792,
+          7136
+        ],
+        [
+          2792,
+          7136
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        15,
+        15
+      ],
+      "requests": 15,
+      "paired": {
+        "pairs": 2,
+        "delta_tokens_s": [
+          14.41435257191364,
+          13.253278694881459
+        ],
+        "speedup_ratios": [
+          1.0639764816002455,
+          1.0593027317963883
+        ],
+        "mean_speedup": 1.061639606698317,
+        "median_speedup": 1.061639606698317,
+        "mean_delta_tokens_s": 13.833815633397549,
+        "descriptive_95pct_t_interval": [
+          6.457513292612108,
+          21.21011797418299
+        ],
+        "pairs_faster": 2,
+        "requests_faster": 15,
+        "request_speedup_min": 1.0597041914017917,
+        "request_speedup_max": 1.063152582691826
+      }
+    },
+    "ninfer-build-draftq4-bf16": {
+      "decode_tokens_s_runs": [
+        251.6396786805071,
+        252.2267056979251
+      ],
+      "decode_tokens_s_mean": 251.9331921892161,
+      "decode_tokens_s_stdev": 0.4150907847559778,
+      "latency_s_mean": 1.6551352833164856,
+      "accepted_and_drafted": [
+        [
+          2753,
+          7370
+        ],
+        [
+          2753,
+          7370
+        ]
+      ],
+      "responses_matching_reference_first_run": [
+        0,
+        0
+      ],
+      "requests": 15,
+      "paired": {
+        "pairs": 2,
+        "delta_tokens_s": [
+          26.332625035682355,
+          28.741576203627176
+        ],
+        "speedup_ratios": [
+          1.1168743925664806,
+          1.1286062131680241
+        ],
+        "mean_speedup": 1.1227403028672525,
+        "median_speedup": 1.1227403028672525,
+        "mean_delta_tokens_s": 27.537100619654765,
+        "descriptive_95pct_t_interval": [
+          12.23303384970132,
+          42.84116738960821
+        ],
+        "pairs_faster": 2,
+        "requests_faster": 12,
+        "request_speedup_min": 0.7347557109144123,
+        "request_speedup_max": 1.4818311686439705
+      }
+    }
+  }
+}

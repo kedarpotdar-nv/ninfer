@@ -15,9 +15,23 @@ Provenance of the numbers: all measurements below were taken with the branch as 
 commit, before `ops(linear_add): keep upstream's K=6144 NVFP4 A4 threshold`. That later commit restores upstream's
 route selection for NVFP4 `linear_add` weights with K=6144; the selected artifact (and the public one) contains no
 such weight (its 64 K=6144 output projections are FP8, `AllowA8`; NVFP4 tensors are at K=5120 and K=17408 only), so
-the code path never executed during these runs and the current head reproduces them unchanged. A confirmation run of
-`throughput_8k` on the current head is recorded in `speed-bench-category-decode.json` under `head_confirmation` when
-present.
+the code path never executed during these runs and the current head reproduces them unchanged.
+
+**Confirmation on the pushed head, and the engine-only share** (`throughput_8k`, same harness, two alternating
+repeats, run the next day; `20261006T193732Z-engine-sweep-paired-analysis.json`, `speed-bench-category-decode.json`
+under `head_confirmation`):
+
+| Arm (same session) | Decode tok/s | Paired vs public NInfer |
+| --- | ---: | --- |
+| Public NInfer `68c5435` binary, public artifact | 224.4 | reference |
+| **Fork head binary, public artifact (engine only)** | **238.2** | **x1.062** (+13.8 tok/s, 95% CI +6.5 to +21.2); all 15 responses identical to the public binary's |
+| Fork head binary, re-quantized artifact | **251.9** | x1.123 (+27.5 tok/s, CI +12.2 to +42.8) |
+
+So on the code as pushed, the engine alone is worth +6.2% with bit-identical outputs, and the two artifact
+conversions add a further +5.7 points on top. Absolute rates in this session ran 1 to 4% above the previous day's
+(224.4 vs 221.9 for the unchanged public arm; 251.9 vs 241.9 for the fork), which is day-to-day drift of the machine
+(fresh WSL VM, clocks); compare ratios within a session rather than absolute numbers across sessions. The headline
+table keeps the original session because it is the one with the llama.cpp arm.
 
 | Workload | llama.cpp b11425, Q4_K_M weights + Q4_K_M DFlash2 draft | Public NInfer `68c5435`, public artifact (NVFP4 MLP, FP8 elsewhere) | This fork, re-quantized artifact (public + GDN projections NVFP4/A4 + draft FFN Q4) |
 | --- | ---: | ---: | ---: |
@@ -29,8 +43,9 @@ The three columns are not the same weights: llama.cpp runs Q4_K_M GGUF, NInfer r
 artifact, and the fork column adds two more conversions on top of the public artifact. The GSM8K and BFCL section at
 the end is what makes the speed comparison fair. Within the NInfer-to-fork gain, the artifact conversions carry part
 of it: on `throughput_8k` the draft-FFN Q4 conversion alone is worth about 7 of the 20 tok/s (234.4 to 241.3 in the
-`20261005T220134Z` paired analysis), and the GDN NVFP4/A4 conversion carried the round-1 gain; the engine-only
-share (fork binary on the public artifact) has not been measured in isolation.
+`20261005T220134Z` paired analysis), and the GDN NVFP4/A4 conversion carried the round-1 gain. The engine-only
+share was measured directly afterwards (next table): the fork binary on the public artifact is +6.2% over the
+public binary with identical outputs.
 
 Paired statistics are in `recipes/rtx5090-qwen38-27b/*-paired-analysis.json`; the AgentPerf summary in
 `agentperf-default-v1-summary.json`. The AgentPerf run needs `--host-context-mib 8192 --device-state-slots 4`.
