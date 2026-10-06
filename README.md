@@ -11,11 +11,18 @@ RTX 5090 (GB202, 32 GB), driver 591.86, Ubuntu WSL2 on Windows 11, CUDA 13.4.2, 
 DFlash2 with seven draft tokens, BF16 KV, greedy, 256 output tokens, thinking enabled. Decode rates are the server's
 `timings.predicted_per_second`, arithmetic mean over requests, from alternating paired runs.
 
-| Workload | llama.cpp b11425 (Q4_K_M + DFlash2 Q4_K_M) | Public NInfer `68c5435`, FP8 artifact | This fork, draft-Q4 artifact |
+| Workload | llama.cpp b11425, Q4_K_M weights + Q4_K_M DFlash2 draft | Public NInfer `68c5435`, public artifact (NVFP4 MLP, FP8 elsewhere) | This fork, re-quantized artifact (public + GDN projections NVFP4/A4 + draft FFN Q4) |
 | --- | ---: | ---: | ---: |
 | SPEED-Bench `throughput_8k`, 15 requests (~8K-token prompts) | 156.4 tok/s | 221.9 | **241.9** (+9.0% vs NInfer, +54.6% vs llama.cpp) |
 | SPEED-Bench qualitative, first 3 turns of each of 11 categories (33 requests) | | 227.9 | **271.5** (+19.1%) |
 | AgentPerf local 0.3.3 `agentperf-default-v1`, total normalized replay time, recorded output policy | | | **174 s (2.9 min)**; round-1 engine 307 s |
+
+The three columns are not the same weights: llama.cpp runs Q4_K_M GGUF, NInfer runs a mixed NVFP4/FP8 engine
+artifact, and the fork column adds two more conversions on top of the public artifact. The GSM8K and BFCL section at
+the end is what makes the speed comparison fair. Within the NInfer-to-fork gain, the artifact conversions carry part
+of it: on `throughput_8k` the draft-FFN Q4 conversion alone is worth about 7 of the 20 tok/s (234.4 to 241.3 in the
+`20261005T220134Z` paired analysis), and the GDN NVFP4/A4 conversion carried the round-1 gain; the engine-only
+share (fork binary on the public artifact) has not been measured in isolation.
 
 Paired statistics are in `recipes/rtx5090-qwen38-27b/*-paired-analysis.json`; the AgentPerf summary in
 `agentperf-default-v1-summary.json`. The AgentPerf run needs `--host-context-mib 8192 --device-state-slots 4`.
@@ -26,9 +33,9 @@ NInfer does not honor `ignore_eos`, so the AgentPerf figure is from the recorded
 Mean of the per-request decode rate within each category, then mean over the alternating repeats
 (`speed-bench-category-decode.json`). Same requests to every server; 256 output tokens; thinking on.
 
-`throughput_8k`, 5 requests per category, 2 repeats per server:
+`throughput_8k`, 5 requests per category, 2 repeats per server (weights per column as in the table above):
 
-| Category | llama.cpp b11425 (Q4_K_M + DFlash2 Q4_K_M) | Public NInfer `68c5435`, FP8 artifact | This fork, draft-Q4 artifact | Fork vs llama.cpp |
+| Category | llama.cpp b11425, Q4_K_M | Public NInfer `68c5435`, public artifact | This fork, re-quantized artifact | Fork vs llama.cpp |
 | --- | ---: | ---: | ---: | ---: |
 | high_entropy | 141.3 | 194.3 | **207.3** | +46.8% |
 | mixed | 178.7 | 259.5 | **282.4** | +58.0% |
@@ -37,7 +44,7 @@ Mean of the per-request decode rate within each category, then mean over the alt
 
 Qualitative, first 3 turns of each category, 3 repeats per server (no llama.cpp arm on this workload):
 
-| Category | Public NInfer `68c5435`, FP8 artifact | This fork, `NINFER_PDL=0` | This fork, draft-Q4 artifact | Fork vs public NInfer |
+| Category | Public NInfer `68c5435`, public artifact | This fork, `NINFER_PDL=0` | This fork, re-quantized artifact | Fork vs public NInfer |
 | --- | ---: | ---: | ---: | ---: |
 | coding | 226.1 | 281.4 | **286.3** | +26.6% |
 | humanities | 193.0 | 235.6 | **240.1** | +24.4% |
@@ -65,7 +72,7 @@ launch at +1.7% overall; the rest is the fused GDN record route, the post-fold w
 | Fused NVFP4 GDN Record route (B=1, T=8): convolution, SiLU and record publication inside the A4 GEMM epilogue | +2.1%, outputs bit-identical |
 | Post-fold host wait only when host memory is still read asynchronously | the next graph launch overlaps the fold |
 | Programmatic dependent launch for NVFP4/FP8/Q8 GEMMs and quantizers; weights are prefetched before the grid-dependency join (`NINFER_PDL=0` disables) | +1.6 to +2.1% |
-| Q4 `linear_add` K=17408, Q4 route in `linear_dynamic_grouped_conv_add`, NVFP4 `linear_add` A4 route from T>=8 for K=6144 | enabling changes for the artifact experiments |
+| Q4 `linear_add` K=17408 and a Q4 projection route in `linear_dynamic_grouped_conv_add` (needed by the draft-FFN Q4 artifact); the NVFP4 `linear_add` A4 threshold is upstream's | enabling changes for the artifact |
 | `--agent-prompt-cache` (opt-in, default off): a second automatic prompt-cache candidate at the boundary before the final message, OpenAI chat and Responses | agent loops that rewrite their last message keep the shared prefix: AgentPerf prompt-cache hits 44% to 88% |
 | Tests: valid prefixes 1..8 and T=8 graph replay for the fused record route; Q4 K=17408 and fused-op Q4 profiles; schema test for the new flag | see Validation |
 
