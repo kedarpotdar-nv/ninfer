@@ -65,6 +65,26 @@ CTest on Windows: see "Test results" at the end of this file. Two Windows-only f
 | C++20 strictness | `shared_ptr::unique()` (removed in C++20) replaced by `use_count() == 1`; `<array>` includes made explicit; `static constexpr` kernel locals so MSVC lambdas need no capture; `std::sqrt` not used in `constexpr` initialisers (tests) |
 | Tests | `pipe`/`dup2` capture through the CRT equivalents, portable `mkdtemp`, `_aligned_malloc`; the GNU ld `--wrap` fault-injection test and the BSD-socket transport test are Linux-only; a helper named `near` renamed (windows.h macro) |
 
-Linux behaviour is unchanged: the same source passes the Linux suites that cover the touched code (serve options,
-context cost, resource manager, request log, logging, artifact reader/materialization, media, prompt input,
-OpenAI/Anthropic schemas).
+## Test results
+
+Native Windows, `ctest --test-dir build-win -j1` (MSVC 14.41, CUDA 13.4.59, no FFmpeg/curl): **126 of 126 passed**
+in 945 s; the 11 real-artifact suites report "skipped" until `NINFER_TEST_ARTIFACT` points at an artifact on NTFS.
+Compared with the Linux suite list, four tests are absent on Windows by design: the artifact materialization
+fault-injection test and its writer-interop companion (GNU ld `--wrap`), the BSD-socket HTTP transport test, and the
+empty-`NINFER_CUDA_SYNC` device test; the media decode test and the frontend test's media sub-tests only run when
+FFmpeg is enabled.
+
+Real-artifact suites natively (`run-real-tests.ps1 -Artifact <NTFS path>`): native transactions, preemption, score,
+vision workspace, DFlash2, DFlash prefill and agent continuation all pass; `loading_real` skips as it does on Linux;
+all eleven `NINFER_PREFIX_REAL_SCENARIO` runs of the prefix suite pass (the `stream-observations` scenario crashed
+once while a Linux test run was sharing the GPU and then passed four consecutive reruns). The MoE and DFlash-v1
+suites need other artifacts, as on Linux.
+
+Linux check of the same branch (WSL2, CUDA 13.4.2, GCC, full rebuild, suite run with the selected artifact):
+**127 of 128 pass**, including the real-artifact suites and all prefix-reuse scenarios. The one miss is the
+softmax-attention oracle test, which passed in 400 s on the pre-port tree the same morning and then timed out at the
+int8 variant on the port tree. The WSL toolchain was unhealthy at that point: nvcc and nvlink segfaulted repeatedly
+on the int8 translation units and the device link, the kernel reported a bad-page taint, and two forced WSL restarts
+left corrupted journals, so the int8 object is suspect rather than the port (the only source change in that path is
+a `static constexpr` kernel-pointer local, and the pre-port server runs `--kv-dtype int8` correctly on the same
+machine). A clean rebuild of the ops library is the pending confirmation; this line will be updated with its result.
