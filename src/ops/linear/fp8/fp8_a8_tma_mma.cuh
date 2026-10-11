@@ -296,7 +296,7 @@ void launch_fp8_a8_tma_mma(const Fp8A8Operands& p, Output output, Epilogue epilo
         const int blocks  = p.rows / Schedule::kBlockRows * div_up(count, Schedule::kBlockTokens);
         const auto plan   = fp8_tma_split_k_plan<Schedule>(blocks, p.k);
         const auto launch = [&]<bool Full, bool Split>() {
-            static constexpr auto kernel =
+            constexpr auto kernel =
                 fp8_a8_tma_mma_kernel<Schedule, Full, Output, Epilogue, Split, RowPolicy>;
             constexpr int bytes =
                 fp8_tma_scratch_bytes<Schedule, Epilogue> + Schedule::kBarrierBytes;

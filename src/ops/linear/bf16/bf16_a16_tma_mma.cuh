@@ -137,7 +137,7 @@ void launch_bf16_a16_tma_mma(const Bf16A16Operands& p, Output output, Epilogue e
         if (blocks > 2147483647LL)
             throw std::invalid_argument("BF16 TMA grid exceeds CUDA grid.x capacity");
         const auto launch = [&]<bool Full>() {
-            static constexpr auto kernel = bf16_a16_tma_mma_kernel<Schedule, Full, Output, Epilogue>;
+            constexpr auto kernel = bf16_a16_tma_mma_kernel<Schedule, Full, Output, Epilogue>;
             constexpr int bytes =
                 bf16_tma_scratch_bytes<Schedule, Epilogue> + Schedule::kBarrierBytes;
             bf16_prepare_shared<bytes, kernel>();
