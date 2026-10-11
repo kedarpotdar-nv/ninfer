@@ -18,6 +18,10 @@ bool ProgramImpl::checkpoint_matches(CheckpointHandle handle, const RequestBaseP
         base.impl_->prefix_digests.at(record.frontier) != record.key.digests) {
         return false;
     }
+    if (!record.identity->prefill_frontiers.empty() &&
+        !base.impl_->prefill_prefix_matches(record.identity->prefill_frontiers, record.frontier)) {
+        return false;
+    }
     return prefix_matches(*base.impl_->prompt, record.identity->ledger,
                           record.identity->prefix_identity, record.frontier);
 }

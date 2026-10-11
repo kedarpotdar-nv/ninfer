@@ -559,7 +559,8 @@ runtime::PrefillStepResult ProgramImpl::advance_prefill(SequenceState& sequence,
 
         if (staged.cursor < staged.prompt_tokens) {
             const std::uint32_t nominal =
-                std::min(prefill_chunk, staged.prompt_tokens - staged.cursor);
+                request.base->prefill_end(staged.cursor, staged.prompt_tokens, prefill_chunk) -
+                staged.cursor;
             mark_workspace_usage(staged.prepare_mtp ? workspace_plan.mtp_prefill
                                                     : workspace_plan.text_prefill);
             if (is_masked_draft_backend(speculative_backend)) {

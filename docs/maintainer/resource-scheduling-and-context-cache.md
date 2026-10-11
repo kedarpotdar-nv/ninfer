@@ -181,6 +181,17 @@ Source provenance、tokenizer 的精确 frontier 和完整媒体范围共同决�
 保存来自实际输入恢复点、显式锚点、共享 marker、正常生成终点，以及实际抢占需要的执行快照。
 Prefill/Replay chunk 结束本身不产生保存机会。
 
+Prefill and Replay unit ends are planned from valid prompt checkpoint opportunities even when
+prefix reuse is disabled or an optional capture is skipped. The maximum prefill chunk applies
+between these logical ends; rewrite execution splits remain mandatory within each unit. Cache
+admission decides whether to retain state, not which prefill batch sizes execute. This keeps a
+fixed prompt's cold execution schedule independent of cache on/off. It does not promise that
+cached autoregressive history is bit-identical to recomputing that history as a batched prompt.
+Prompt captures retain their planned prefill frontiers. Reuse requires the same frontiers through
+the candidate checkpoint; an old message-end checkpoint inside a new, longer message's chunk is
+ineligible. A compatible earlier checkpoint can still be selected. This can reduce reused tokens
+for growing messages. Detached generation and recovery images retain their existing semantics.
+
 Engine 在跨过语义 frontier 前调用 Native 准备目的 state、检查点描述与必要尾页空间。私有输入
 点可先退休本记录已经过时的输入点，再尝试 Device 槽，容量不足时可使用 Host。私有输入点共用
 原 KV 历史，只增加恢复 state 与保护 frontier；公共条目需要独立视图时，另取得必要的尾页复制空间。

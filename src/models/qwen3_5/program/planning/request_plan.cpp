@@ -59,6 +59,33 @@ CaptureGroup RequestBasePlanImpl::capture_group(std::uint32_t frontier) const {
             .frontier = frontier};
 }
 
+std::uint32_t RequestBasePlanImpl::prefill_end(std::uint32_t cursor, std::uint32_t target,
+                                             std::uint32_t chunk) const {
+    if (!prompt || cursor > target || chunk == 0) {
+        throw std::logic_error("prefill requires a prompt and a valid execution interval");
+    }
+    std::uint32_t end = cursor + std::min(chunk, target - cursor);
+    const auto split = [&](std::uint32_t frontier) {
+        if (frontier > cursor && frontier < end && accepts_capture(frontier)) { end = frontier; }
+    };
+    const auto& rewrite = prompt->identity.rewrite_checkpoint;
+    split(rewrite ? rewrite->recovery_frontier : summary.prompt_tokens);
+    for (const auto& opportunity : prompt->context_cache.opportunities) {
+        split(opportunity.frontier);
+    }
+    return end;
+}
+
+bool RequestBasePlanImpl::prefill_prefix_matches(std::span<const std::uint32_t> source,
+                                                 std::uint32_t frontier) const {
+    const auto expected_end = std::upper_bound(prefill_frontiers.begin(), prefill_frontiers.end(),
+                                                frontier);
+    const auto source_end = std::upper_bound(source.begin(), source.end(), frontier);
+    return expected_end != prefill_frontiers.begin() && source_end != source.begin() &&
+           *std::prev(expected_end) == frontier && *std::prev(source_end) == frontier &&
+           std::equal(prefill_frontiers.begin(), expected_end, source.begin(), source_end);
+}
+
 RequestBasePlan ProgramImpl::plan_request(PreparedPromptData&& prompt,
                                           const runtime::ResolvedExecutionOptions& options) {
     if (prompt.token_ids.empty()) { throw std::invalid_argument("prompt must contain tokens"); }
@@ -156,12 +183,23 @@ RequestBasePlan ProgramImpl::plan_request(PreparedPromptData&& prompt,
         previous = frontier;
     }
     base->prompt = std::make_shared<const PreparedPromptData>(std::move(prompt));
+    for (std::uint32_t cursor = 0; cursor < base->summary.prompt_tokens;) {
+        const auto end = base->prefill_end(cursor, base->summary.prompt_tokens, prefill_chunk);
+        const auto& rewrites = base->prompt->identity.rewrite_execution_frontiers;
+        for (auto it = std::upper_bound(rewrites.begin(), rewrites.end(), cursor);
+             it != rewrites.end() && *it < end; ++it) {
+            base->prefill_frontiers.push_back(*it);
+        }
+        base->prefill_frontiers.push_back(end);
+        cursor = end;
+    }
     if (base->summary.publish_continuation) {
         const auto& prepared = *base->prompt;
         auto backing         = std::make_shared<PreparedCaptureBacking>();
         backing->digests     = base->prefix_digests;
         backing->ledger      = prepared.token_ids;
         backing->prefix_identity.assign(prepared);
+        backing->prefill_frontiers = base->prefill_frontiers;
         base->capture_backing = std::move(backing);
         const auto add        = [&](std::uint32_t frontier, runtime::CheckpointRole role) {
             if (!base->accepts_capture(frontier)) { return; }
@@ -200,7 +238,8 @@ UnitDemand ProgramImpl::next_unit(const SequenceState& sequence, const RequestCo
             throw std::logic_error("prefill demand requires a prefill cursor");
         }
         const auto& staged      = *request.prefill;
-        demand.main_frontier    = std::min(staged.prompt_tokens, staged.cursor + prefill_chunk);
+        demand.main_frontier    = request.base->prefill_end(staged.cursor, staged.prompt_tokens,
+                                                          prefill_chunk);
         demand.backend_frontier = backend_kv_cache() ? demand.main_frontier : 0;
         if (speculative_backend == SpeculativeBackend::Mtp &&
             demand.main_frontier == staged.prompt_tokens && staged.initial_mtp_extent != 0) {
@@ -213,8 +252,8 @@ UnitDemand ProgramImpl::next_unit(const SequenceState& sequence, const RequestCo
         if (request.lifecycle != Lifecycle::Replaying) {
             throw std::logic_error("request is not replaying");
         }
-        demand.main_frontier =
-            std::min(request.replay_target, request.replay_cursor + prefill_chunk);
+        demand.main_frontier = request.base->prefill_end(request.replay_cursor,
+                                                         request.replay_target, prefill_chunk);
         demand.backend_frontier = backend_kv_cache() ? demand.main_frontier : 0;
         break;
     case ExecutionUnitKind::Decode: {

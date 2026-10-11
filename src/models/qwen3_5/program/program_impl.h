@@ -40,6 +40,8 @@ struct PreparedCaptureBacking {
     PrefixShortlistDigests digests;
     std::vector<TokenId> ledger;
     qwen3_5::detail::ResidentPrefixIdentity prefix_identity;
+    // Present for prompt captures; detached generation/recovery images keep their own history.
+    std::vector<std::uint32_t> prefill_frontiers;
 };
 
 struct CaptureGroup {
@@ -62,6 +64,7 @@ struct RequestBasePlanImpl {
     ops::SamplingConfig sampling;
     std::shared_ptr<const VisionControlPlan> vision_control_plan;
     std::vector<CaptureGroup> capture_groups;
+    std::vector<std::uint32_t> prefill_frontiers;
     std::shared_ptr<const PreparedCaptureBacking> capture_backing;
     PrefixShortlistDigests prefix_digests;
     std::uint32_t prefix_identity_tag = 0;
@@ -69,6 +72,11 @@ struct RequestBasePlanImpl {
 
     [[nodiscard]] bool accepts_capture(std::uint32_t frontier) const noexcept;
     [[nodiscard]] CaptureGroup capture_group(std::uint32_t frontier) const;
+    // Logical execution ends do not depend on cache publication or capture admission.
+    [[nodiscard]] std::uint32_t prefill_end(std::uint32_t cursor, std::uint32_t target,
+                                          std::uint32_t chunk) const;
+    [[nodiscard]] bool prefill_prefix_matches(std::span<const std::uint32_t> source,
+                                              std::uint32_t frontier) const;
 };
 enum class PendingKind : std::uint8_t { None, Begin, Ordinary, Speculative };
 

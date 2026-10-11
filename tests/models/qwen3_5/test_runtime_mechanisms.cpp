@@ -5,6 +5,7 @@
 #include "models/qwen3_5/program/vision_control.h"
 
 #include "models/qwen3_5/program/prefix_identity.h"
+#include "models/qwen3_5/program/program_impl.h"
 #include "runtime/contract/timing.h"
 
 #include <algorithm>
@@ -25,6 +26,51 @@ void expect(bool condition, std::string_view message) {
     if (condition) { return; }
     ++failures;
     std::cerr << "FAIL: " << message << '\n';
+}
+
+void test_cache_independent_prefill() {
+    q36::detail::RequestBasePlanImpl plan;
+    auto prompt = std::make_shared<q36::PreparedPromptData>();
+    plan.prompt = prompt;
+    plan.summary.prompt_tokens = 5000;
+    // A checkpoint interrupts a nominal chunk. The next chunk must start at the same
+    // position whether the prior checkpoint was retained, rejected, or disabled.
+    prompt->context_cache.opportunities = {{.frontier = 2300}, {.frontier = 1100},
+                                           {.frontier = 1100}, {.frontier = 0}};
+    prompt->identity.rewrite_checkpoint = q36::RewriteCheckpointSpec{
+        .frontier = 4998, .recovery_frontier = 4996};
+    const auto schedule = [&] {
+        std::vector<std::uint32_t> ends;
+        for (std::uint32_t cursor = 0; cursor < 5000;) {
+            cursor = plan.prefill_end(cursor, 5000, 2048);
+            ends.push_back(cursor);
+        }
+        return ends;
+    };
+    const std::vector<std::uint32_t> expected{1100, 2300, 4348, 4996, 5000};
+    expect(schedule() == expected, "cache-off prefill lost a logical checkpoint boundary");
+    plan.allow_prefix_reuse = true;
+    plan.summary.publish_continuation = true;
+    expect(schedule() == expected, "cache publication changed prefill batch geometry");
+    expect(plan.prefill_end(2300, 5000, 2048) == 4348,
+           "warm prefix continuation changed the next chunk boundary");
+    expect(plan.prefill_end(2300, 3000, 2048) == 3000,
+           "Replay exceeded its target frontier");
+    expect(plan.prefill_end(5000, 5100, 2048) == 5100,
+           "generated Replay suffix reused an earlier prompt boundary");
+    plan.prefill_frontiers = expected;
+    expect(plan.prefill_prefix_matches(expected, 2300), "compatible prefix was rejected");
+    const std::vector<std::uint32_t> mid_chunk{1100, 2300, 3000, 5000};
+    expect(!plan.prefill_prefix_matches(mid_chunk, 3000),
+           "a prior message boundary inside the current chunk was reused");
+    const std::vector<std::uint32_t> different_prefix{1024, 1100, 2300, 4348};
+    expect(!plan.prefill_prefix_matches(different_prefix, 2300),
+           "equal endpoints hid different earlier prefill batches");
+    auto vision = std::make_shared<q36::VisionControlPlan>();
+    vision->items.push_back({.token_begin = 1000, .token_end = 1200});
+    plan.vision_control_plan = vision;
+    expect(plan.prefill_end(0, 5000, 2048) == 2048,
+           "prefill split an indivisible media item at an invalid cache opportunity");
 }
 
 void test_execution_timing_domains() {
@@ -489,6 +535,7 @@ void test_regular_prefix_identity() {
 } // namespace
 
 int main() {
+    test_cache_independent_prefill();
     test_execution_timing_domains();
     test_decoder_layout();
     test_round_layout();
