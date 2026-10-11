@@ -80,7 +80,9 @@ void launch_fp8_a16_sliced_k_mma(const Fp8A16Operands& p, Output output, Epilogu
             "FP8 sliced-K requires complete row/K tiles and matching tokens");
     constexpr auto kernel = fp8_a16_sliced_k_mma_kernel<Schedule, Output, Epilogue, Rows>;
     const int bytes       = fp8_prepare_shared<Schedule::kSharedBytes, kernel>();
-    for_each_token_slice(p.tokens, capacity, [&](int offset, int count) {
+    // MSVC (C2326) cannot read a constexpr local inside a lambda without capturing it; GCC/Clang
+    // treat it as a constant expression. Copy-capture keeps both compilers happy.
+    for_each_token_slice(p.tokens, capacity, [&, kernel](int offset, int count) {
         const dim3 grid(p.rows / Schedule::kBlockRows, div_up(count, capacity));
         if (pdl::enabled()) {
             CUDA_CHECK(pdl::launch_dependent(
